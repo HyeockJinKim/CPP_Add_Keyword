@@ -170,10 +170,12 @@ postfixexpression
 	| postfixexpression '--'
 	| Dynamic_cast '<' thetypeid '>' '(' expression ')'
 	| Static_cast '<' thetypeid '>' '(' expression ')'
+	| WStatic_cast '<' thetypeid '>' '(' expression ')'
 	| Reinterpret_cast '<' thetypeid '>' '(' expression ')'
 	| Const_cast '<' thetypeid '>' '(' expression ')'
 	| Typeid '(' expression ')'
 	| Typeid '(' thetypeid ')'
+	| Nweek postfixexpression
 ;
 
 expressionlist
@@ -1112,10 +1114,14 @@ basespecifierlist
 
 basespecifier
 :
-	attributespecifierseq? basetypespecifier
-	| attributespecifierseq? Virtual accessspecifier? basetypespecifier
-	| attributespecifierseq? accessspecifier Virtual? basetypespecifier
+	| attributespecifierseq? Weak? basetypespecifier
+	| attributespecifierseq? Weak? Virtual accessspecifier? basetypespecifier
+	| attributespecifierseq? Virtual Weak? accessspecifier? basetypespecifier
+	| attributespecifierseq? accessspecifier Weak? Virtual? basetypespecifier
+	| attributespecifierseq? accessspecifier Virtual? Weak? basetypespecifier
+	| attributespecifierseq? Weak? accessspecifier Virtual? basetypespecifier
 ;
+
 
 classordecltype
 :
@@ -1541,6 +1547,11 @@ Nullptr
 	'nullptr'
 ;
 
+Nweek
+:
+	'nweek'
+;
+
 Operator
 :
 	'operator'
@@ -1701,9 +1712,19 @@ Wchar
 	'wchar_t'
 ;
 
+Weak
+:
+    'weak'
+;
+
 While
 :
 	'while'
+;
+
+WStatic_cast
+:
+    'wstatic_cast'
 ;
 
 /*Operators*/
