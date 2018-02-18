@@ -1,4 +1,5 @@
-// Generated from /home/khz/IdeaProjects/cpp_java/src/CPP14.g4 by ANTLR 4.7
+// Generated from /home/khz/IdeaProjects/cpp_java/src/g4/CPP14.g4 by ANTLR 4.7
+package g4;
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;
@@ -22,7 +23,7 @@ public class CPP14Lexer extends Lexer {
 		Do=22, Double=23, Dynamic_cast=24, Else=25, Enum=26, Explicit=27, Export=28, 
 		Extern=29, False=30, Final=31, Float=32, For=33, Friend=34, Goto=35, If=36, 
 		Inline=37, Int=38, Long=39, Mutable=40, Namespace=41, New=42, Noexcept=43, 
-		Nullptr=44, Nweek=45, Operator=46, Override=47, Private=48, Protected=49, 
+		Nullptr=44, Nweak=45, Operator=46, Override=47, Private=48, Protected=49, 
 		Public=50, Register=51, Reinterpret_cast=52, Return=53, Short=54, Signed=55, 
 		Sizeof=56, Static=57, Static_assert=58, Static_cast=59, Struct=60, Switch=61, 
 		Template=62, This=63, Thread_local=64, Throw=65, True=66, Try=67, Typedef=68, 
@@ -55,7 +56,7 @@ public class CPP14Lexer extends Lexer {
 		"Constexpr", "Const_cast", "Continue", "Decltype", "Default", "Delete", 
 		"Do", "Double", "Dynamic_cast", "Else", "Enum", "Explicit", "Export", 
 		"Extern", "False", "Final", "Float", "For", "Friend", "Goto", "If", "Inline", 
-		"Int", "Long", "Mutable", "Namespace", "New", "Noexcept", "Nullptr", "Nweek", 
+		"Int", "Long", "Mutable", "Namespace", "New", "Noexcept", "Nullptr", "Nweak", 
 		"Operator", "Override", "Private", "Protected", "Public", "Register", 
 		"Reinterpret_cast", "Return", "Short", "Signed", "Sizeof", "Static", "Static_assert", 
 		"Static_cast", "Struct", "Switch", "Template", "This", "Thread_local", 
@@ -88,7 +89,7 @@ public class CPP14Lexer extends Lexer {
 		"'enum'", "'explicit'", "'export'", "'extern'", "'false'", "'final'", 
 		"'float'", "'for'", "'friend'", "'goto'", "'if'", "'inline'", "'int'", 
 		"'long'", "'mutable'", "'namespace'", "'new'", "'noexcept'", "'nullptr'", 
-		"'nweek'", "'operator'", "'override'", "'private'", "'protected'", "'public'", 
+		"'nweak'", "'operator'", "'override'", "'private'", "'protected'", "'public'", 
 		"'register'", "'reinterpret_cast'", "'return'", "'short'", "'signed'", 
 		"'sizeof'", "'static'", "'static_assert'", "'static_cast'", "'struct'", 
 		"'switch'", "'template'", "'this'", "'thread_local'", "'throw'", "'true'", 
@@ -108,7 +109,7 @@ public class CPP14Lexer extends Lexer {
 		"Delete", "Do", "Double", "Dynamic_cast", "Else", "Enum", "Explicit", 
 		"Export", "Extern", "False", "Final", "Float", "For", "Friend", "Goto", 
 		"If", "Inline", "Int", "Long", "Mutable", "Namespace", "New", "Noexcept", 
-		"Nullptr", "Nweek", "Operator", "Override", "Private", "Protected", "Public", 
+		"Nullptr", "Nweak", "Operator", "Override", "Private", "Protected", "Public", 
 		"Register", "Reinterpret_cast", "Return", "Short", "Signed", "Sizeof", 
 		"Static", "Static_assert", "Static_cast", "Struct", "Switch", "Template", 
 		"This", "Thread_local", "Throw", "True", "Try", "Typedef", "Typeid", "Typename", 
@@ -479,7 +480,7 @@ public class CPP14Lexer extends Lexer {
 		"\u028e\7p\2\2\u028e\u028f\7w\2\2\u028f\u0290\7n\2\2\u0290\u0291\7n\2\2"+
 		"\u0291\u0292\7r\2\2\u0292\u0293\7v\2\2\u0293\u0294\7t\2\2\u0294Z\3\2\2"+
 		"\2\u0295\u0296\7p\2\2\u0296\u0297\7y\2\2\u0297\u0298\7g\2\2\u0298\u0299"+
-		"\7g\2\2\u0299\u029a\7m\2\2\u029a\\\3\2\2\2\u029b\u029c\7q\2\2\u029c\u029d"+
+		"\7c\2\2\u0299\u029a\7m\2\2\u029a\\\3\2\2\2\u029b\u029c\7q\2\2\u029c\u029d"+
 		"\7r\2\2\u029d\u029e\7g\2\2\u029e\u029f\7t\2\2\u029f\u02a0\7c\2\2\u02a0"+
 		"\u02a1\7v\2\2\u02a1\u02a2\7q\2\2\u02a2\u02a3\7t\2\2\u02a3^\3\2\2\2\u02a4"+
 		"\u02a5\7q\2\2\u02a5\u02a6\7x\2\2\u02a6\u02a7\7g\2\2\u02a7\u02a8\7t\2\2"+

@@ -175,7 +175,7 @@ postfixexpression
 	| Const_cast '<' thetypeid '>' '(' expression ')'
 	| Typeid '(' expression ')'
 	| Typeid '(' thetypeid ')'
-	| Nweek postfixexpression
+	| Nweak postfixexpression
 ;
 
 expressionlist
@@ -1547,9 +1547,9 @@ Nullptr
 	'nullptr'
 ;
 
-Nweek
+Nweak
 :
-	'nweek'
+	'nweak'
 ;
 
 Operator

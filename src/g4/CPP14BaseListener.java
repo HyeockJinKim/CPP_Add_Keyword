@@ -1,4 +1,5 @@
-// Generated from /home/khz/IdeaProjects/cpp_java/src/CPP14.g4 by ANTLR 4.7
+// Generated from /home/khz/IdeaProjects/cpp_java/src/g4/CPP14.g4 by ANTLR 4.7
+package g4;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
