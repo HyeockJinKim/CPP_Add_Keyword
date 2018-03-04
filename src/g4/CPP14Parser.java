@@ -1,16 +1,19 @@
 // Generated from /home/khz/IdeaProjects/cpp_java/src/g4/CPP14.g4 by ANTLR 4.7
 package g4;
+import org.antlr.v4.runtime.InputMismatchException;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.misc.*;
 import org.antlr.v4.runtime.tree.*;
-import java.util.List;
-import java.util.Iterator;
-import java.util.ArrayList;
+
+import java.util.*;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
 public class CPP14Parser extends Parser {
+	private static Map<String, Boolean> weakClassMap = new HashMap<>();
+	private static final String tab = "    ";
+	private static int tabNum = 0;
 	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
@@ -279,6 +282,11 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitTranslationunit(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			return declarationseq().getText();
 		}
 	}
 
@@ -1500,6 +1508,14 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitPostfixexpression(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			if (Nweak() != null) {
+				return Nweak().getText() + " " + postfixexpression().getText();
+			}
+			return super.getText();
+		}
 	}
 
 	public final PostfixexpressionContext postfixexpression() throws RecognitionException {
@@ -2297,6 +2313,11 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitNewexpression(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			return super.getText().replace("new", "new "); // FIXME This have problem. Should change
 		}
 	}
 
@@ -3110,6 +3131,7 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitMultiplicativeexpression(this);
 			else return visitor.visitChildren(this);
 		}
+
 	}
 
 	public final MultiplicativeexpressionContext multiplicativeexpression() throws RecognitionException {
@@ -4149,6 +4171,13 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitAssignmentexpression(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			if (getChildCount() > 1)
+				return logicalorexpression().getText() + " " + assignmentoperator().getText() + " " + initializerclause().getText();
+			return super.getText();
+		}
 	}
 
 	public final AssignmentexpressionContext assignmentexpression() throws RecognitionException {
@@ -4490,6 +4519,17 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitStatement(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder();
+			for (int i = 0; i < tabNum; ++i) {
+				text.append(tab);
+			}
+			text.append(super.getText());
+			text.append('\n');
+			return text.toString();
+		}
 	}
 
 	public final StatementContext statement() throws RecognitionException {
@@ -4822,6 +4862,21 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitCompoundstatement(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			if (statementseq() != null) {
+				++tabNum;
+				StringBuilder text = new StringBuilder(" {\n" + statementseq().getText());
+				--tabNum;
+				for (int i = 0; i < tabNum; ++i) {
+					text.append(tab);
+				}
+				text.append("}");
+				return text.toString();
+			}
+			return " {}";
 		}
 	}
 
@@ -5823,6 +5878,11 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitDeclaration(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			return super.getText() + "\n\n";
+		}
 	}
 
 	public final DeclarationContext declaration() throws RecognitionException {
@@ -6123,6 +6183,11 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitSimpledeclaration(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			return super.getText();
+		}
 	}
 
 	public final SimpledeclarationContext simpledeclaration() throws RecognitionException {
@@ -6413,6 +6478,17 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitDeclspecifier(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			if (typespecifier() != null) {
+				if (typespecifier().trailingtypespecifier() != null) {
+					return super.getText() + " ";
+				}
+				return super.getText();
+			}
+			return super.getText() + " ";
 		}
 	}
 
@@ -8817,6 +8893,19 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitUsingdeclaration(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder(Using().getText() + " ");
+			if (Typename() != null) {
+				text.append(Typename().getText() + " ");
+			}
+			if (nestednamespecifier() != null) {
+				text.append(nestednamespecifier().getText());
+			}
+			text.append(unqualifiedid().getText() + ";");
+			return text.toString();
 		}
 	}
 
@@ -11794,6 +11883,7 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitFunctiondefinition(this);
 			else return visitor.visitChildren(this);
 		}
+
 	}
 
 	public final FunctiondefinitionContext functiondefinition() throws RecognitionException {
@@ -12454,6 +12544,30 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitClassspecifier(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder();
+			text.append(classhead().getText());
+			text.append( "{\n" + memberspecification().getText() +"}");
+
+			StringBuilder weakClass = new StringBuilder();
+
+			for (String weakClassName : weakClassMap.keySet()) {
+				if (weakClassMap.get(weakClassName)) {
+					weakClass.append("class _")
+							.append(weakClassName)
+							.append(": public ")
+							.append(weakClassName)
+							.append(" {\n};\n\n");
+					weakClassMap.put(weakClassName, false);
+				}
+			}
+
+			weakClass.append(text);
+
+			return weakClass.toString();
+		}
 	}
 
 	public final ClassspecifierContext classspecifier() throws RecognitionException {
@@ -12524,6 +12638,21 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitClasshead(this);
 			else return visitor.visitChildren(this);
+		}
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder(classkey().getText() + " ");
+			if (attributespecifierseq() != null) {
+				text.append(attributespecifierseq().getText() + " ");
+			}
+			text.append(classheadname().getText() + " ");
+			if (classvirtspecifier() != null) {
+				text.append(classvirtspecifier().getText() + " ");
+			}
+			if (baseclause() != null) {
+				text.append(baseclause().getText() + " ");
+			}
+			return text.toString();
 		}
 	}
 
@@ -12793,6 +12922,20 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitMemberspecification(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder();
+			if (accessspecifier() != null) {
+				text.append(accessspecifier().getText() + ":\n");
+			} else {
+				text.append(memberdeclaration().getText() +"\n");
+			}
+			if (memberspecification() != null) {
+				text.append(memberspecification().getText());
+			}
+			return text.toString();
+		}
 	}
 
 	public final MemberspecificationContext memberspecification() throws RecognitionException {
@@ -12948,6 +13091,17 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitMemberdeclaration(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder();
+			++tabNum;
+			for (ParseTree child : this.children) {
+				text.append(child.getText());
+			}
+			--tabNum;
+			return tab + text.toString();
 		}
 	}
 
@@ -13468,6 +13622,11 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitBaseclause(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			return ":" + basespecifierlist().getText();
+		}
 	}
 
 	public final BaseclauseContext baseclause() throws RecognitionException {
@@ -13516,6 +13675,16 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitBasespecifierlist(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder();
+			if (basespecifierlist() != null) {
+				text.append(basespecifierlist().getText() +",");
+			}
+			text.append(basespecifier().getText());
+			return text.toString();
 		}
 	}
 
@@ -13624,6 +13793,28 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitBasespecifier(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			StringBuilder text = new StringBuilder();
+			if (Weak() != null) {
+				if (!weakClassMap.keySet().contains(basetypespecifier().classordecltype().classname().getText())) {
+					weakClassMap.put(basetypespecifier().classordecltype().classname().getText(), true);
+				}
+				for (ParseTree child : this.children) {
+					if (child.equals(basetypespecifier())) { // FIXME : nested specifier problem
+						text.append(" _" + child.getText());
+					} else if (!child.equals(Weak())) {
+						text.append(" " + child.getText());
+					}
+				}
+			} else {
+				for (ParseTree child : this.children) {
+					text.append(" " + child.getText());
+				}
+			}
+			return text.toString();
 		}
 	}
 

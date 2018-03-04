@@ -1,14 +1,14 @@
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CppClass {
     String className;
-    public Set<CppClass> superClassSet;
-    public Set<String> virtualFunctionSet;
+    public Map<CppClass, Boolean> superClassMap;// Map Weak, Nweak
+    public Map<String, CppClass> virtualFunctionMap; // Map
 
     CppClass(String className) {
         this.className = className;
-        this.superClassSet = new HashSet<>();
-        this.virtualFunctionSet = new HashSet<>();
+        this.superClassMap = new HashMap<>();
+        this.virtualFunctionMap = new HashMap<>();
     }
 }
