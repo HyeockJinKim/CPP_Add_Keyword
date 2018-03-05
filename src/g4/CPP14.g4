@@ -34,7 +34,7 @@
  *
  * Input must avoid conditional compilation blocks (this grammar ignores any preprocessor directive)
  * GCC extensions not yet supported (do not try to parse the preprocessor output)
- * Right angle bracket (C++11) - Solution '>>' and '>>=' are not tokens, only '>'
+ * Right angle bracket (C++11) - Solution '>>' and '>>=' are not tokens, only Greater
  * Lexer issue with pure-specifier rule ('0' token) - Solution in embedded code
  *   Change it to match the target language you want in line 1097 or verify inside your listeners/visitors
  *   Java:
@@ -61,7 +61,7 @@ primaryexpression
 :
 	literal
 	| This
-	| '(' expression ')'
+	| LeftParen expression RightParen
 	| idexpression
 	| lambdaexpression
 ;
@@ -78,8 +78,8 @@ unqualifiedid
 	| operatorfunctionid
 	| conversionfunctionid
 	| literaloperatorid
-	| '~' classname
-	| '~' decltypespecifier
+	| Tilde classname
+	| Tilde decltypespecifier
 	| templateid
 ;
 
@@ -90,12 +90,12 @@ qualifiedid
 
 nestednamespecifier
 :
-	'::'
-	| thetypename '::'
-	| namespacename '::'
-	| decltypespecifier '::'
-	| nestednamespecifier Identifier '::'
-	| nestednamespecifier Template? simpletemplateid '::'
+	Doublecolon
+	| thetypename Doublecolon
+	| namespacename Doublecolon
+	| decltypespecifier Doublecolon
+	| nestednamespecifier Identifier Doublecolon
+	| nestednamespecifier Template? simpletemplateid Doublecolon
 ;
 
 lambdaexpression
@@ -105,26 +105,26 @@ lambdaexpression
 
 lambdaintroducer
 :
-	'[' lambdacapture? ']'
+	LeftBracket lambdacapture? RightBracket
 ;
 
 lambdacapture
 :
 	capturedefault
 	| capturelist
-	| capturedefault ',' capturelist
+	| capturedefault Comma capturelist
 ;
 
 capturedefault
 :
-	'&'
-	| '='
+	And
+	| Assign
 ;
 
 capturelist
 :
-	capture '...'?
-	| capturelist ',' capture '...'?
+	capture Ellipsis?
+	| capturelist Comma capture Ellipsis?
 ;
 
 capture
@@ -136,45 +136,45 @@ capture
 simplecapture
 :
 	Identifier
-	| '&' Identifier
+	| And Identifier
 	| This
 ;
 
 initcapture
 :
 	Identifier initializer
-	| '&' Identifier initializer
+	| And Identifier initializer
 ;
 
 lambdadeclarator
 :
-	'(' parameterdeclarationclause ')' Mutable? exceptionspecification?
+	LeftParen parameterdeclarationclause RightParen Mutable? exceptionspecification?
 	attributespecifierseq? trailingreturntype?
 ;
 
 postfixexpression
 :
 	primaryexpression
-	| postfixexpression '[' expression ']'
-	| postfixexpression '[' bracedinitlist ']'
-	| postfixexpression '(' expressionlist? ')'
-	| simpletypespecifier '(' expressionlist? ')'
-	| typenamespecifier '(' expressionlist? ')'
+	| postfixexpression LeftBracket expression RightBracket
+	| postfixexpression LeftBracket bracedinitlist RightBracket
+	| postfixexpression LeftParen expressionlist? RightParen
+	| simpletypespecifier LeftParen expressionlist? RightParen
+	| typenamespecifier LeftParen expressionlist? RightParen
 	| simpletypespecifier bracedinitlist
 	| typenamespecifier bracedinitlist
-	| postfixexpression '.' Template? idexpression
-	| postfixexpression '->' Template? idexpression
-	| postfixexpression '.' pseudodestructorname
-	| postfixexpression '->' pseudodestructorname
-	| postfixexpression '++'
-	| postfixexpression '--'
-	| Dynamic_cast '<' thetypeid '>' '(' expression ')'
-	| Static_cast '<' thetypeid '>' '(' expression ')'
-	| WStatic_cast '<' thetypeid '>' '(' expression ')'
-	| Reinterpret_cast '<' thetypeid '>' '(' expression ')'
-	| Const_cast '<' thetypeid '>' '(' expression ')'
-	| Typeid '(' expression ')'
-	| Typeid '(' thetypeid ')'
+	| postfixexpression Dot Template? idexpression
+	| postfixexpression Arrow Template? idexpression
+	| postfixexpression Dot pseudodestructorname
+	| postfixexpression Arrow pseudodestructorname
+	| postfixexpression PlusPlus
+	| postfixexpression MinusMinus
+	| Dynamic_cast Less thetypeid Greater LeftParen expression RightParen
+	| Static_cast Less thetypeid Greater LeftParen expression RightParen
+	| WStatic_cast Less thetypeid Greater LeftParen expression RightParen
+	| Reinterpret_cast Less thetypeid Greater LeftParen expression RightParen
+	| Const_cast Less thetypeid Greater LeftParen expression RightParen
+	| Typeid LeftParen expression RightParen
+	| Typeid LeftParen thetypeid RightParen
 	| Nweak postfixexpression
 ;
 
@@ -185,22 +185,22 @@ expressionlist
 
 pseudodestructorname
 :
-	nestednamespecifier? thetypename '::' '~' thetypename
-	| nestednamespecifier Template simpletemplateid '::' '~' thetypename
-	| nestednamespecifier? '~' thetypename
-	| '~' decltypespecifier
+	nestednamespecifier? thetypename Doublecolon Tilde thetypename
+	| nestednamespecifier Template simpletemplateid Doublecolon Tilde thetypename
+	| nestednamespecifier? Tilde thetypename
+	| Tilde decltypespecifier
 ;
 
 unaryexpression
 :
 	postfixexpression
-	| '++' castexpression
-	| '--' castexpression
+	| PlusPlus castexpression
+	| MinusMinus castexpression
 	| unaryoperator castexpression
 	| Sizeof unaryexpression
-	| Sizeof '(' thetypeid ')'
-	| Sizeof '...' '(' Identifier ')'
-	| Alignof '(' thetypeid ')'
+	| Sizeof LeftParen thetypeid RightParen
+	| Sizeof Ellipsis LeftParen Identifier RightParen
+	| Alignof LeftParen thetypeid RightParen
 	| noexceptexpression
 	| newexpression
 	| deleteexpression
@@ -208,24 +208,24 @@ unaryexpression
 
 unaryoperator
 :
-	'|'
-	| '*'
-	| '&'
-	| '+'
-	| '!'
-	| '~'
-	| '-'
+	Or
+	| Star
+	| And
+	| Plus
+	| Not
+	| Tilde
+	| Minus
 ;
 
 newexpression
 :
-	'::'? New newplacement? newtypeid newinitializer?
-	| '::'? New newplacement? '(' thetypeid ')' newinitializer?
+	Doublecolon? New newplacement? newtypeid newinitializer?
+	| Doublecolon? New newplacement? LeftParen thetypeid RightParen newinitializer?
 ;
 
 newplacement
 :
-	'(' expressionlist ')'
+	LeftParen expressionlist RightParen
 ;
 
 newtypeid
@@ -241,112 +241,112 @@ newdeclarator
 
 noptrnewdeclarator
 :
-	'[' expression ']' attributespecifierseq?
-	| noptrnewdeclarator '[' constantexpression ']' attributespecifierseq?
+	LeftBracket expression RightBracket attributespecifierseq?
+	| noptrnewdeclarator LeftBracket constantexpression RightBracket attributespecifierseq?
 ;
 
 newinitializer
 :
-	'(' expressionlist? ')'
+	LeftParen expressionlist? RightParen
 	| bracedinitlist
 ;
 
 deleteexpression
 :
-	'::'? Delete castexpression
-	| '::'? Delete '[' ']' castexpression
+	Doublecolon? Delete castexpression
+	| Doublecolon? Delete LeftBracket RightBracket castexpression
 ;
 
 noexceptexpression
 :
-	Noexcept '(' expression ')'
+	Noexcept LeftParen expression RightParen
 ;
 
 castexpression
 :
 	unaryexpression
-	| '(' thetypeid ')' castexpression
+	| LeftParen thetypeid RightParen castexpression
 ;
 
 pmexpression
 :
 	castexpression
-	| pmexpression '.*' castexpression
-	| pmexpression '->*' castexpression
+	| pmexpression DotStar castexpression
+	| pmexpression ArrowStar castexpression
 ;
 
 multiplicativeexpression
 :
 	pmexpression
-	| multiplicativeexpression '*' pmexpression
-	| multiplicativeexpression '/' pmexpression
-	| multiplicativeexpression '%' pmexpression
+	| multiplicativeexpression Star pmexpression
+	| multiplicativeexpression Div pmexpression
+	| multiplicativeexpression Mod pmexpression
 ;
 
 additiveexpression
 :
 	multiplicativeexpression
-	| additiveexpression '+' multiplicativeexpression
-	| additiveexpression '-' multiplicativeexpression
+	| additiveexpression Plus multiplicativeexpression
+	| additiveexpression Minus multiplicativeexpression
 ;
 
 shiftexpression
 :
 	additiveexpression
-	| shiftexpression '<<' additiveexpression
+	| shiftexpression LeftShift additiveexpression
 	| shiftexpression rightShift additiveexpression
 ;
 
 relationalexpression
 :
 	shiftexpression
-	| relationalexpression '<' shiftexpression
-	| relationalexpression '>' shiftexpression
-	| relationalexpression '<=' shiftexpression
-	| relationalexpression '>=' shiftexpression
+	| relationalexpression Less shiftexpression
+	| relationalexpression Greater shiftexpression
+	| relationalexpression LessEqual shiftexpression
+	| relationalexpression GreaterEqual shiftexpression
 ;
 
 equalityexpression
 :
 	relationalexpression
-	| equalityexpression '==' relationalexpression
-	| equalityexpression '!=' relationalexpression
+	| equalityexpression Equal relationalexpression
+	| equalityexpression NotEqual relationalexpression
 ;
 
 andexpression
 :
 	equalityexpression
-	| andexpression '&' equalityexpression
+	| andexpression And equalityexpression
 ;
 
 exclusiveorexpression
 :
 	andexpression
-	| exclusiveorexpression '^' andexpression
+	| exclusiveorexpression Caret andexpression
 ;
 
 inclusiveorexpression
 :
 	exclusiveorexpression
-	| inclusiveorexpression '|' exclusiveorexpression
+	| inclusiveorexpression Or exclusiveorexpression
 ;
 
 logicalandexpression
 :
 	inclusiveorexpression
-	| logicalandexpression '&&' inclusiveorexpression
+	| logicalandexpression AndAnd inclusiveorexpression
 ;
 
 logicalorexpression
 :
 	logicalandexpression
-	| logicalorexpression '||' logicalandexpression
+	| logicalorexpression OrOr logicalandexpression
 ;
 
 conditionalexpression
 :
 	logicalorexpression
-	| logicalorexpression '?' expression ':' assignmentexpression
+	| logicalorexpression Question expression Colon assignmentexpression
 ;
 
 assignmentexpression
@@ -358,23 +358,23 @@ assignmentexpression
 
 assignmentoperator
 :
-	'='
-	| '*='
-	| '/='
-	| '%='
-	| '+='
-	| '-='
+	Assign
+	| StarAssign
+	| DivAssign
+	| ModAssign
+	| PlusAssign
+	| MinusAssign
 	| rightShiftAssign
-	| '<<='
-	| '&='
-	| '^='
-	| '|='
+	| LeftShiftAssign
+	| AndAssign
+	| XorAssign
+	| OrAssign
 ;
 
 expression
 :
 	assignmentexpression
-	| expression ',' assignmentexpression
+	| expression Comma assignmentexpression
 ;
 
 constantexpression
@@ -396,19 +396,19 @@ statement
 
 labeledstatement
 :
-	attributespecifierseq? Identifier ':' statement
-	| attributespecifierseq? Case constantexpression ':' statement
-	| attributespecifierseq? Default ':' statement
+	attributespecifierseq? Identifier Colon statement
+	| attributespecifierseq? Case constantexpression Colon statement
+	| attributespecifierseq? Default Colon statement
 ;
 
 expressionstatement
 :
-	expression? ';'
+	expression? Semi
 ;
 
 compoundstatement
 :
-	'{' statementseq? '}'
+	LeftBrace statementseq? RightBrace
 ;
 
 statementseq
@@ -419,24 +419,24 @@ statementseq
 
 selectionstatement
 :
-	If '(' condition ')' statement
-	| If '(' condition ')' statement Else statement
-	| Switch '(' condition ')' statement
+	If LeftParen condition RightParen statement
+	| If LeftParen condition RightParen statement Else statement
+	| Switch LeftParen condition RightParen statement
 ;
 
 condition
 :
 	expression
-	| attributespecifierseq? declspecifierseq declarator '=' initializerclause
+	| attributespecifierseq? declspecifierseq declarator Assign initializerclause
 	| attributespecifierseq? declspecifierseq declarator bracedinitlist
 ;
 
 iterationstatement
 :
-	While '(' condition ')' statement
-	| Do statement While '(' expression ')' ';'
-	| For '(' forinitstatement condition? ';' expression? ')' statement
-	| For '(' forrangedeclaration ':' forrangeinitializer ')' statement
+	While LeftParen condition RightParen statement
+	| Do statement While LeftParen expression RightParen Semi
+	| For LeftParen forinitstatement condition? Semi expression? RightParen statement
+	| For LeftParen forrangedeclaration Colon forrangeinitializer RightParen statement
 ;
 
 forinitstatement
@@ -458,11 +458,11 @@ forrangeinitializer
 
 jumpstatement
 :
-	Break ';'
-	| Continue ';'
-	| Return expression? ';'
-	| Return bracedinitlist ';'
-	| Goto Identifier ';'
+	Break Semi
+	| Continue Semi
+	| Return expression? Semi
+	| Return bracedinitlist Semi
+	| Goto Identifier Semi
 ;
 
 declarationstatement
@@ -504,28 +504,28 @@ blockdeclaration
 
 aliasdeclaration
 :
-	Using Identifier attributespecifierseq? '=' thetypeid ';'
+	Using Identifier attributespecifierseq? Assign thetypeid Semi
 ;
 
 simpledeclaration
 :
-	declspecifierseq? initdeclaratorlist? ';'
-	| attributespecifierseq declspecifierseq? initdeclaratorlist ';'
+	declspecifierseq? initdeclaratorlist? Semi
+	| attributespecifierseq declspecifierseq? initdeclaratorlist Semi
 ;
 
 static_assertdeclaration
 :
-	Static_assert '(' constantexpression ',' Stringliteral ')' ';'
+	Static_assert LeftParen constantexpression Comma Stringliteral RightParen Semi
 ;
 
 emptydeclaration
 :
-	';'
+	Semi
 ;
 
 attributedeclaration
 :
-	attributespecifierseq ';'
+	attributespecifierseq Semi
 ;
 
 declspecifier
@@ -623,8 +623,8 @@ thetypename
 
 decltypespecifier
 :
-	Decltype '(' expression ')'
-	| Decltype '(' Auto ')'
+	Decltype LeftParen expression RightParen
+	| Decltype LeftParen Auto RightParen
 ;
 
 elaboratedtypespecifier
@@ -642,8 +642,8 @@ enumname
 
 enumspecifier
 :
-	enumhead '{' enumeratorlist? '}'
-	| enumhead '{' enumeratorlist ',' '}'
+	enumhead LeftBrace enumeratorlist? RightBrace
+	| enumhead LeftBrace enumeratorlist Comma RightBrace
 ;
 
 enumhead
@@ -654,7 +654,7 @@ enumhead
 
 opaqueenumdeclaration
 :
-	enumkey attributespecifierseq? Identifier enumbase? ';'
+	enumkey attributespecifierseq? Identifier enumbase? Semi
 ;
 
 enumkey
@@ -666,19 +666,19 @@ enumkey
 
 enumbase
 :
-	':' typespecifierseq
+	Colon typespecifierseq
 ;
 
 enumeratorlist
 :
 	enumeratordefinition
-	| enumeratorlist ',' enumeratordefinition
+	| enumeratorlist Comma enumeratordefinition
 ;
 
 enumeratordefinition
 :
 	enumerator
-	| enumerator '=' constantexpression
+	| enumerator Assign constantexpression
 ;
 
 enumerator
@@ -711,17 +711,17 @@ namednamespacedefinition
 
 originalnamespacedefinition
 :
-	Inline? Namespace Identifier '{' namespacebody '}'
+	Inline? Namespace Identifier LeftBrace namespacebody RightBrace
 ;
 
 extensionnamespacedefinition
 :
-	Inline? Namespace originalnamespacename '{' namespacebody '}'
+	Inline? Namespace originalnamespacename LeftBrace namespacebody RightBrace
 ;
 
 unnamednamespacedefinition
 :
-	Inline? Namespace '{' namespacebody '}'
+	Inline? Namespace LeftBrace namespacebody RightBrace
 ;
 
 namespacebody
@@ -736,7 +736,7 @@ namespacealias
 
 namespacealiasdefinition
 :
-	Namespace Identifier '=' qualifiednamespacespecifier ';'
+	Namespace Identifier Assign qualifiednamespacespecifier Semi
 ;
 
 qualifiednamespacespecifier
@@ -746,23 +746,23 @@ qualifiednamespacespecifier
 
 usingdeclaration
 :
-	Using Typename? nestednamespecifier unqualifiedid ';'
-	| Using '::' unqualifiedid ';'
+	Using Typename? nestednamespecifier unqualifiedid Semi
+	| Using Doublecolon unqualifiedid Semi
 ;
 
 usingdirective
 :
-	attributespecifierseq? Using Namespace nestednamespecifier? namespacename ';'
+	attributespecifierseq? Using Namespace nestednamespecifier? namespacename Semi
 ;
 
 asmdefinition
 :
-	Asm '(' Stringliteral ')' ';'
+	Asm LeftParen Stringliteral RightParen Semi
 ;
 
 linkagespecification
 :
-	Extern Stringliteral '{' declarationseq? '}'
+	Extern Stringliteral LeftBrace declarationseq? RightBrace
 	| Extern Stringliteral declaration
 ;
 
@@ -774,22 +774,22 @@ attributespecifierseq
 
 attributespecifier
 :
-	'[' '[' attributelist ']' ']'
+	LeftBracket LeftBracket attributelist RightBracket RightBracket
 	| alignmentspecifier
 ;
 
 alignmentspecifier
 :
-	Alignas '(' thetypeid '...'? ')'
-	| Alignas '(' constantexpression '...'? ')'
+	Alignas LeftParen thetypeid Ellipsis? RightParen
+	| Alignas LeftParen constantexpression Ellipsis? RightParen
 ;
 
 attributelist
 :
 	attribute?
-	| attributelist ',' attribute?
-	| attribute '...'
-	| attributelist ',' attribute '...'
+	| attributelist Comma attribute?
+	| attribute Ellipsis
+	| attributelist Comma attribute Ellipsis
 ;
 
 attribute
@@ -805,7 +805,7 @@ attributetoken
 
 attributescopedtoken
 :
-	attributenamespace '::' Identifier
+	attributenamespace Doublecolon Identifier
 ;
 
 attributenamespace
@@ -815,7 +815,7 @@ attributenamespace
 
 attributeargumentclause
 :
-	'(' balancedtokenseq ')'
+	LeftParen balancedtokenseq RightParen
 ;
 
 balancedtokenseq
@@ -826,9 +826,9 @@ balancedtokenseq
 
 balancedtoken
 :
-	'(' balancedtokenseq ')'
-	| '[' balancedtokenseq ']'
-	| '{' balancedtokenseq '}'
+	LeftParen balancedtokenseq RightParen
+	| LeftBracket balancedtokenseq RightBracket
+	| LeftBrace balancedtokenseq RightBrace
 	/*any token other than a parenthesis , a bracket , or a brace*/
 ;
 
@@ -836,7 +836,7 @@ balancedtoken
 initdeclaratorlist
 :
 	initdeclarator
-	| initdeclaratorlist ',' initdeclarator
+	| initdeclaratorlist Comma initdeclarator
 ;
 
 initdeclarator
@@ -860,27 +860,27 @@ noptrdeclarator
 :
 	declaratorid attributespecifierseq?
 	| noptrdeclarator parametersandqualifiers
-	| noptrdeclarator '[' constantexpression? ']' attributespecifierseq?
-	| '(' ptrdeclarator ')'
+	| noptrdeclarator LeftBracket constantexpression? RightBracket attributespecifierseq?
+	| LeftParen ptrdeclarator RightParen
 ;
 
 parametersandqualifiers
 :
-	'(' parameterdeclarationclause ')' cvqualifierseq? refqualifier?
+	LeftParen parameterdeclarationclause RightParen cvqualifierseq? refqualifier?
 	exceptionspecification? attributespecifierseq?
 ;
 
 trailingreturntype
 :
-	'->' trailingtypespecifierseq abstractdeclarator?
+	Arrow trailingtypespecifierseq abstractdeclarator?
 ;
 
 ptroperator
 :
-	'*' attributespecifierseq? cvqualifierseq?
-	| '&' attributespecifierseq?
-	| '&&' attributespecifierseq?
-	| nestednamespecifier '*' attributespecifierseq? cvqualifierseq?
+	Star attributespecifierseq? cvqualifierseq?
+	| And attributespecifierseq?
+	| AndAnd attributespecifierseq?
+	| nestednamespecifier Star attributespecifierseq? cvqualifierseq?
 ;
 
 cvqualifierseq
@@ -896,13 +896,13 @@ cvqualifier
 
 refqualifier
 :
-	'&'
-	| '&&'
+	And
+	| AndAnd
 ;
 
 declaratorid
 :
-	'...'? idexpression
+	Ellipsis? idexpression
 ;
 
 thetypeid
@@ -927,9 +927,9 @@ noptrabstractdeclarator
 :
 	noptrabstractdeclarator parametersandqualifiers
 	| parametersandqualifiers
-	| noptrabstractdeclarator '[' constantexpression? ']' attributespecifierseq?
-	| '[' constantexpression? ']' attributespecifierseq?
-	| '(' ptrabstractdeclarator ')'
+	| noptrabstractdeclarator LeftBracket constantexpression? RightBracket attributespecifierseq?
+	| LeftBracket constantexpression? RightBracket attributespecifierseq?
+	| LeftParen ptrabstractdeclarator RightParen
 ;
 
 abstractpackdeclarator
@@ -941,29 +941,29 @@ abstractpackdeclarator
 noptrabstractpackdeclarator
 :
 	noptrabstractpackdeclarator parametersandqualifiers
-	| noptrabstractpackdeclarator '[' constantexpression? ']'
+	| noptrabstractpackdeclarator LeftBracket constantexpression? RightBracket
 	attributespecifierseq?
-	| '...'
+	| Ellipsis
 ;
 
 parameterdeclarationclause
 :
-	parameterdeclarationlist? '...'?
-	| parameterdeclarationlist ',' '...'
+	parameterdeclarationlist? Ellipsis?
+	| parameterdeclarationlist Comma Ellipsis
 ;
 
 parameterdeclarationlist
 :
 	parameterdeclaration
-	| parameterdeclarationlist ',' parameterdeclaration
+	| parameterdeclarationlist Comma parameterdeclaration
 ;
 
 parameterdeclaration
 :
 	attributespecifierseq? declspecifierseq declarator
-	| attributespecifierseq? declspecifierseq declarator '=' initializerclause
+	| attributespecifierseq? declspecifierseq declarator Assign initializerclause
 	| attributespecifierseq? declspecifierseq abstractdeclarator?
-	| attributespecifierseq? declspecifierseq abstractdeclarator? '='
+	| attributespecifierseq? declspecifierseq abstractdeclarator? Assign
 	initializerclause
 ;
 
@@ -977,19 +977,19 @@ functionbody
 :
 	ctorinitializer? compoundstatement
 	| functiontryblock
-	| '=' Default ';'
-	| '=' Delete ';'
+	| Assign Default Semi
+	| Assign Delete Semi
 ;
 
 initializer
 :
 	braceorequalinitializer
-	| '(' expressionlist ')'
+	| LeftParen expressionlist RightParen
 ;
 
 braceorequalinitializer
 :
-	'=' initializerclause
+	Assign initializerclause
 	| bracedinitlist
 ;
 
@@ -1001,14 +1001,14 @@ initializerclause
 
 initializerlist
 :
-	initializerclause '...'?
-	| initializerlist ',' initializerclause '...'?
+	initializerclause Ellipsis?
+	| initializerlist Comma initializerclause Ellipsis?
 ;
 
 bracedinitlist
 :
-	'{' initializerlist ','? '}'
-	| '{' '}'
+	LeftBrace initializerlist Comma? RightBrace
+	| LeftBrace RightBrace
 ;
 
 /*Classes*/
@@ -1020,7 +1020,7 @@ classname
 
 classspecifier
 :
-	classhead '{' memberspecification? '}'
+	classhead LeftBrace memberspecification? RightBrace
 ;
 
 classhead
@@ -1049,12 +1049,12 @@ classkey
 memberspecification
 :
 	memberdeclaration memberspecification?
-	| accessspecifier ':' memberspecification?
+	| accessspecifier Colon memberspecification?
 ;
 
 memberdeclaration
 :
-	attributespecifierseq? declspecifierseq? memberdeclaratorlist? ';'
+	attributespecifierseq? declspecifierseq? memberdeclaratorlist? Semi
 	| functiondefinition
 	| usingdeclaration
 	| static_assertdeclaration
@@ -1066,14 +1066,14 @@ memberdeclaration
 memberdeclaratorlist
 :
 	memberdeclarator
-	| memberdeclaratorlist ',' memberdeclarator
+	| memberdeclaratorlist Comma memberdeclarator
 ;
 
 memberdeclarator
 :
 	declarator virtspecifierseq? purespecifier?
 	| declarator braceorequalinitializer?
-	| Identifier? attributespecifierseq? ':' constantexpression
+	| Identifier? attributespecifierseq? Colon constantexpression
 ;
 
 virtspecifierseq
@@ -1090,7 +1090,7 @@ virtspecifier
 
 /*
 purespecifier:
-	'=' '0'//Conflicts with the lexer
+	Assign '0'//Conflicts with the lexer
  ;
  */
 purespecifier
@@ -1103,13 +1103,13 @@ purespecifier
 /*Derived classes*/
 baseclause
 :
-	':' basespecifierlist
+	Colon basespecifierlist
 ;
 
 basespecifierlist
 :
-	basespecifier '...'?
-	| basespecifierlist ',' basespecifier '...'?
+	basespecifier Ellipsis?
+	| basespecifierlist Comma basespecifier Ellipsis?
 ;
 
 basespecifier
@@ -1159,18 +1159,18 @@ conversiondeclarator
 
 ctorinitializer
 :
-	':' meminitializerlist
+	Colon meminitializerlist
 ;
 
 meminitializerlist
 :
-	meminitializer '...'?
-	| meminitializer '...'? ',' meminitializerlist
+	meminitializer Ellipsis?
+	| meminitializer Ellipsis? Comma meminitializerlist
 ;
 
 meminitializer
 :
-	meminitializerid '(' expressionlist? ')'
+	meminitializerid LeftParen expressionlist? RightParen
 	| meminitializerid bracedinitlist
 ;
 
@@ -1195,13 +1195,13 @@ literaloperatorid
 /*Templates*/
 templatedeclaration
 :
-	Template '<' templateparameterlist '>' declaration
+	Template Less templateparameterlist Greater declaration
 ;
 
 templateparameterlist
 :
 	templateparameter
-	| templateparameterlist ',' templateparameter
+	| templateparameterlist Comma templateparameter
 ;
 
 templateparameter
@@ -1212,24 +1212,24 @@ templateparameter
 
 typeparameter
 :
-	Class '...'? Identifier?
-	| Class Identifier? '=' thetypeid
-	| Typename '...'? Identifier?
-	| Typename Identifier? '=' thetypeid
-	| Template '<' templateparameterlist '>' Class '...'? Identifier?
-	| Template '<' templateparameterlist '>' Class Identifier? '=' idexpression
+	Class Ellipsis? Identifier?
+	| Class Identifier? Assign thetypeid
+	| Typename Ellipsis? Identifier?
+	| Typename Identifier? Assign thetypeid
+	| Template Less templateparameterlist Greater Class Ellipsis? Identifier?
+	| Template Less templateparameterlist Greater Class Identifier? Assign idexpression
 ;
 
 simpletemplateid
 :
-	templatename '<' templateargumentlist? '>'
+	templatename Less templateargumentlist? Greater
 ;
 
 templateid
 :
 	simpletemplateid
-	| operatorfunctionid '<' templateargumentlist? '>'
-	| literaloperatorid '<' templateargumentlist? '>'
+	| operatorfunctionid Less templateargumentlist? Greater
+	| literaloperatorid Less templateargumentlist? Greater
 ;
 
 templatename
@@ -1239,8 +1239,8 @@ templatename
 
 templateargumentlist
 :
-	templateargument '...'?
-	| templateargumentlist ',' templateargument '...'?
+	templateargument Ellipsis?
+	| templateargumentlist Comma templateargument Ellipsis?
 ;
 
 templateargument
@@ -1263,7 +1263,7 @@ explicitinstantiation
 
 explicitspecialization
 :
-	Template '<' '>' declaration
+	Template Less Greater declaration
 ;
 
 /*Exception handling*/
@@ -1284,14 +1284,14 @@ handlerseq
 
 handler
 :
-	Catch '(' exceptiondeclaration ')' compoundstatement
+	Catch LeftParen exceptiondeclaration RightParen compoundstatement
 ;
 
 exceptiondeclaration
 :
 	attributespecifierseq? typespecifierseq declarator
 	| attributespecifierseq? typespecifierseq abstractdeclarator?
-	| '...'
+	| Ellipsis
 ;
 
 throwexpression
@@ -1307,18 +1307,18 @@ exceptionspecification
 
 dynamicexceptionspecification
 :
-	Throw '(' typeidlist? ')'
+	Throw LeftParen typeidlist? RightParen
 ;
 
 typeidlist
 :
-	thetypeid '...'?
-	| typeidlist ',' thetypeid '...'?
+	thetypeid Ellipsis?
+	| typeidlist Comma thetypeid Ellipsis?
 ;
 
 noexceptspecification
 :
-	Noexcept '(' constantexpression ')'
+	Noexcept LeftParen constantexpression RightParen
 	| Noexcept
 ;
 
@@ -1871,7 +1871,7 @@ LeftShift
 rightShift
 :
 //'>>'
-	Greater Greater
+	'>>'
 ;
 
 LeftShiftAssign
@@ -1882,7 +1882,7 @@ LeftShiftAssign
 rightShiftAssign
 :
 //'>>='
-	Greater Greater Assign
+	'>>='
 ;
 
 Equal
@@ -1979,46 +1979,46 @@ theoperator
 :
 	New
 	| Delete
-	| New '[' ']'
-	| Delete '[' ']'
-	| '+'
-	| '-'
-	| '*'
-	| '/'
-	| '%'
-	| '^'
-	| '&'
-	| '|'
-	| '~'
-	| '!'
-	| '='
-	| '<'
-	| '>'
-	| '+='
-	| '-='
-	| '*='
-	| '/='
-	| '%='
-	| '^='
-	| '&='
-	| '|='
-	| '<<'
+	| New LeftBracket RightBracket
+	| Delete LeftBracket RightBracket
+	| Plus
+	| Minus
+	| Star
+	| Div
+	| Mod
+	| Caret
+	| And
+	| Or
+	| Tilde
+	| Not
+	| Assign
+	| Less
+	| Greater
+	| PlusAssign
+	| MinusAssign
+	| StarAssign
+	| DivAssign
+	| ModAssign
+	| XorAssign
+	| AndAssign
+	| OrAssign
+	| LeftShift
 	| rightShift
 	| rightShiftAssign
-	| '<<='
-	| '=='
-	| '!='
-	| '<='
-	| '>='
-	| '&&'
-	| '||'
-	| '++'
-	| '--'
-	| ','
-	| '->*'
-	| '->'
-	| '(' ')'
-	| '[' ']'
+	| LeftShiftAssign
+	| Equal
+	| NotEqual
+	| LessEqual
+	| GreaterEqual
+	| AndAnd
+	| OrOr
+	| PlusPlus
+	| MinusMinus
+	| Comma
+	| ArrowStar
+	| Arrow
+	| LeftParen RightParen
+	| LeftBracket RightBracket
 ;
 
 /*Lexer*/
@@ -2240,8 +2240,8 @@ Floatingliteral
 fragment
 Fractionalconstant
 :
-	Digitsequence? '.' Digitsequence
-	| Digitsequence '.'
+	Digitsequence? Dot Digitsequence
+	| Digitsequence Dot
 ;
 
 fragment
@@ -2296,9 +2296,9 @@ Schar
 ;
 
 fragment
-Rawstring /* '"' dcharsequence? '(' rcharsequence? ')' dcharsequence? '"' */
+Rawstring /* '"' dcharsequence? '(' rcharsequence? RightParen dcharsequence? '"' */
 :
-	'"' .*? '(' .*? ')' .*? '"'
+	'"' .*? LeftParen .*? RightParen .*? '"'
 ;
 
 booleanliteral
