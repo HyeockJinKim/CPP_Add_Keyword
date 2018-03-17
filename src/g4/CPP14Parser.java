@@ -11,40 +11,53 @@ import java.util.*;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
 public class CPP14Parser extends Parser {
-	private static Map<String, Boolean> weakClassMap = new HashMap<>();
+	// key : variable name , value : classname
+	private static Map<String, String> variableClassMap = new HashMap<>();
+	private static Map<String, WeakClass> classMap = new HashMap<>();
+	private static Set<String> nWeakSet = new HashSet();
+	private static Set<String> superClassSet;
+	private static WeakClass weakClass;
+	private static String currentAccessSpecifier;
+	private static String currentClassName;
+	private static String currentVariable;
 	private static final String tab = "    ";
 	private static int tabNum = 0;
+	private static boolean isWeak = false;
+	private static boolean isNWeak = false;
+	private static boolean isWrongWeak = false;
+	private static boolean isAssign = false;
+
 	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		MultiLineMacro=1, Directive=2, Alignas=3, Alignof=4, Asm=5, Auto=6, Bool=7, 
-		Break=8, Case=9, Catch=10, Char=11, Char16=12, Char32=13, Class=14, Const=15, 
-		Constexpr=16, Const_cast=17, Continue=18, Decltype=19, Default=20, Delete=21, 
-		Do=22, Double=23, Dynamic_cast=24, Else=25, Enum=26, Explicit=27, Export=28, 
-		Extern=29, False=30, Final=31, Float=32, For=33, Friend=34, Goto=35, If=36, 
-		Inline=37, Int=38, Long=39, Mutable=40, Namespace=41, New=42, Noexcept=43, 
-		Nullptr=44, Nweak=45, Operator=46, Override=47, Private=48, Protected=49, 
-		Public=50, Register=51, Reinterpret_cast=52, Return=53, Short=54, Signed=55, 
-		Sizeof=56, Static=57, Static_assert=58, Static_cast=59, Struct=60, Switch=61, 
-		Template=62, This=63, Thread_local=64, Throw=65, True=66, Try=67, Typedef=68, 
-		Typeid=69, Typename=70, Union=71, Unsigned=72, Using=73, Virtual=74, Void=75, 
-		Volatile=76, Wchar=77, Weak=78, While=79, WStatic_cast=80, LeftParen=81, 
-		RightParen=82, LeftBracket=83, RightBracket=84, LeftBrace=85, RightBrace=86, 
-		Plus=87, Minus=88, Star=89, Div=90, Mod=91, Caret=92, And=93, Or=94, Tilde=95, 
-		Not=96, Assign=97, Less=98, Greater=99, PlusAssign=100, MinusAssign=101, 
-		StarAssign=102, DivAssign=103, ModAssign=104, XorAssign=105, AndAssign=106, 
-		OrAssign=107, LeftShift=108, LeftShiftAssign=109, Equal=110, NotEqual=111, 
-		LessEqual=112, GreaterEqual=113, AndAnd=114, OrOr=115, PlusPlus=116, MinusMinus=117, 
-		Comma=118, ArrowStar=119, Arrow=120, Question=121, Colon=122, Doublecolon=123, 
-		Semi=124, Dot=125, DotStar=126, Ellipsis=127, Identifier=128, Integerliteral=129, 
-		Decimalliteral=130, Octalliteral=131, Hexadecimalliteral=132, Binaryliteral=133, 
-		Integersuffix=134, Characterliteral=135, Floatingliteral=136, Stringliteral=137, 
-		Userdefinedintegerliteral=138, Userdefinedfloatingliteral=139, Userdefinedstringliteral=140, 
-		Userdefinedcharacterliteral=141, Whitespace=142, Newline=143, BlockComment=144, 
-		LineComment=145;
+		T__0=1, T__1=2, MultiLineMacro=3, Directive=4, Alignas=5, Alignof=6, Asm=7, 
+		Auto=8, Bool=9, Break=10, Case=11, Catch=12, Char=13, Char16=14, Char32=15, 
+		Class=16, Const=17, Constexpr=18, Const_cast=19, Continue=20, Decltype=21, 
+		Default=22, Delete=23, Do=24, Double=25, Dynamic_cast=26, Else=27, Enum=28, 
+		Explicit=29, Export=30, Extern=31, False=32, Final=33, Float=34, For=35, 
+		Friend=36, Goto=37, If=38, Inline=39, Int=40, Long=41, Mutable=42, Namespace=43, 
+		New=44, Noexcept=45, Nullptr=46, Nweak=47, Operator=48, Override=49, Private=50, 
+		Protected=51, Public=52, Register=53, Reinterpret_cast=54, Return=55, 
+		Short=56, Signed=57, Sizeof=58, Static=59, Static_assert=60, Static_cast=61, 
+		Struct=62, Switch=63, Template=64, This=65, Thread_local=66, Throw=67, 
+		True=68, Try=69, Typedef=70, Typeid=71, Typename=72, Union=73, Unsigned=74, 
+		Using=75, Virtual=76, Void=77, Volatile=78, Wchar=79, Weak=80, While=81, 
+		WStatic_cast=82, LeftParen=83, RightParen=84, LeftBracket=85, RightBracket=86, 
+		LeftBrace=87, RightBrace=88, Plus=89, Minus=90, Star=91, Div=92, Mod=93, 
+		Caret=94, And=95, Or=96, Tilde=97, Not=98, Assign=99, Less=100, Greater=101, 
+		PlusAssign=102, MinusAssign=103, StarAssign=104, DivAssign=105, ModAssign=106, 
+		XorAssign=107, AndAssign=108, OrAssign=109, LeftShift=110, LeftShiftAssign=111, 
+		Equal=112, NotEqual=113, LessEqual=114, GreaterEqual=115, AndAnd=116, 
+		OrOr=117, PlusPlus=118, MinusMinus=119, Comma=120, ArrowStar=121, Arrow=122, 
+		Question=123, Colon=124, Doublecolon=125, Semi=126, Dot=127, DotStar=128, 
+		Ellipsis=129, Identifier=130, Integerliteral=131, Decimalliteral=132, 
+		Octalliteral=133, Hexadecimalliteral=134, Binaryliteral=135, Integersuffix=136, 
+		Characterliteral=137, Floatingliteral=138, Stringliteral=139, Userdefinedintegerliteral=140, 
+		Userdefinedfloatingliteral=141, Userdefinedstringliteral=142, Userdefinedcharacterliteral=143, 
+		Whitespace=144, Newline=145, BlockComment=146, LineComment=147;
 	public static final int
 		RULE_translationunit = 0, RULE_primaryexpression = 1, RULE_idexpression = 2, 
 		RULE_unqualifiedid = 3, RULE_qualifiedid = 4, RULE_nestednamespecifier = 5, 
@@ -167,11 +180,11 @@ public class CPP14Parser extends Parser {
 	};
 
 	private static final String[] _LITERAL_NAMES = {
-		null, null, null, "'alignas'", "'alignof'", "'asm'", "'auto'", "'bool'", 
-		"'break'", "'case'", "'catch'", "'char'", "'char16_t'", "'char32_t'", 
-		"'class'", "'const'", "'constexpr'", "'const_cast'", "'continue'", "'decltype'", 
-		"'default'", "'delete'", "'do'", "'double'", "'dynamic_cast'", "'else'", 
-		"'enum'", "'explicit'", "'export'", "'extern'", "'false'", "'final'", 
+		null, "'>>'", "'>>='", null, null, "'alignas'", "'alignof'", "'asm'", 
+		"'auto'", "'bool'", "'break'", "'case'", "'catch'", "'char'", "'char16_t'", 
+		"'char32_t'", "'class'", "'const'", "'constexpr'", "'const_cast'", "'continue'", 
+		"'decltype'", "'default'", "'delete'", "'do'", "'double'", "'dynamic_cast'", 
+		"'else'", "'enum'", "'explicit'", "'export'", "'extern'", "'false'", "'final'", 
 		"'float'", "'for'", "'friend'", "'goto'", "'if'", "'inline'", "'int'", 
 		"'long'", "'mutable'", "'namespace'", "'new'", "'noexcept'", "'nullptr'", 
 		"'nweak'", "'operator'", "'override'", "'private'", "'protected'", "'public'", 
@@ -188,9 +201,9 @@ public class CPP14Parser extends Parser {
 		"'.*'", "'...'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
-		null, "MultiLineMacro", "Directive", "Alignas", "Alignof", "Asm", "Auto", 
-		"Bool", "Break", "Case", "Catch", "Char", "Char16", "Char32", "Class", 
-		"Const", "Constexpr", "Const_cast", "Continue", "Decltype", "Default", 
+		null, null, null, "MultiLineMacro", "Directive", "Alignas", "Alignof", 
+		"Asm", "Auto", "Bool", "Break", "Case", "Catch", "Char", "Char16", "Char32", 
+		"Class", "Const", "Constexpr", "Const_cast", "Continue", "Decltype", "Default", 
 		"Delete", "Do", "Double", "Dynamic_cast", "Else", "Enum", "Explicit", 
 		"Export", "Extern", "False", "Final", "Float", "For", "Friend", "Goto", 
 		"If", "Inline", "Int", "Long", "Mutable", "Namespace", "New", "Noexcept", 
@@ -283,10 +296,12 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitTranslationunit(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
-			return declarationseq().getText();
+			if (declarationseq() != null) {
+				return declarationseq().getText();
+			}
+			return "";
 		}
 	}
 
@@ -300,7 +315,7 @@ public class CPP14Parser extends Parser {
 			setState(399);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Asm - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Namespace - 3)) | (1L << (Operator - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Static_assert - 3)) | (1L << (Struct - 3)) | (1L << (Template - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Using - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftParen - 68)) | (1L << (LeftBracket - 68)) | (1L << (Star - 68)) | (1L << (And - 68)) | (1L << (Tilde - 68)) | (1L << (AndAnd - 68)) | (1L << (Doublecolon - 68)) | (1L << (Semi - 68)) | (1L << (Ellipsis - 68)) | (1L << (Identifier - 68)))) != 0)) {
+			if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Asm - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Namespace - 5)) | (1L << (Operator - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Static_assert - 5)) | (1L << (Struct - 5)) | (1L << (Template - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Using - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftParen - 70)) | (1L << (LeftBracket - 70)) | (1L << (Star - 70)) | (1L << (And - 70)) | (1L << (Tilde - 70)) | (1L << (AndAnd - 70)) | (1L << (Doublecolon - 70)) | (1L << (Semi - 70)) | (1L << (Ellipsis - 70)) | (1L << (Identifier - 70)))) != 0)) {
 				{
 				setState(398);
 				declarationseq(0);
@@ -327,9 +342,11 @@ public class CPP14Parser extends Parser {
 			return getRuleContext(LiteralContext.class,0);
 		}
 		public TerminalNode This() { return getToken(CPP14Parser.This, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public IdexpressionContext idexpression() {
 			return getRuleContext(IdexpressionContext.class,0);
 		}
@@ -501,6 +518,7 @@ public class CPP14Parser extends Parser {
 		public LiteraloperatoridContext literaloperatorid() {
 			return getRuleContext(LiteraloperatoridContext.class,0);
 		}
+		public TerminalNode Tilde() { return getToken(CPP14Parser.Tilde, 0); }
 		public ClassnameContext classname() {
 			return getRuleContext(ClassnameContext.class,0);
 		}
@@ -664,6 +682,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class NestednamespecifierContext extends ParserRuleContext {
+		public TerminalNode Doublecolon() { return getToken(CPP14Parser.Doublecolon, 0); }
 		public ThetypenameContext thetypename() {
 			return getRuleContext(ThetypenameContext.class,0);
 		}
@@ -880,6 +899,8 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class LambdaintroducerContext extends ParserRuleContext {
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
 		public LambdacaptureContext lambdacapture() {
 			return getRuleContext(LambdacaptureContext.class,0);
 		}
@@ -914,7 +935,7 @@ public class CPP14Parser extends Parser {
 			setState(470);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if (((((_la - 63)) & ~0x3f) == 0 && ((1L << (_la - 63)) & ((1L << (This - 63)) | (1L << (And - 63)) | (1L << (Assign - 63)))) != 0) || _la==Identifier) {
+			if (((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (And - 65)) | (1L << (Assign - 65)))) != 0) || _la==Identifier) {
 				{
 				setState(469);
 				lambdacapture();
@@ -943,6 +964,7 @@ public class CPP14Parser extends Parser {
 		public CapturelistContext capturelist() {
 			return getRuleContext(CapturelistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public LambdacaptureContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1008,6 +1030,8 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class CapturedefaultContext extends ParserRuleContext {
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public CapturedefaultContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1061,9 +1085,11 @@ public class CPP14Parser extends Parser {
 		public CaptureContext capture() {
 			return getRuleContext(CaptureContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public CapturelistContext capturelist() {
 			return getRuleContext(CapturelistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public CapturelistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1222,6 +1248,7 @@ public class CPP14Parser extends Parser {
 
 	public static class SimplecaptureContext extends ParserRuleContext {
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
 		public TerminalNode This() { return getToken(CPP14Parser.This, 0); }
 		public SimplecaptureContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -1292,6 +1319,7 @@ public class CPP14Parser extends Parser {
 		public InitializerContext initializer() {
 			return getRuleContext(InitializerContext.class,0);
 		}
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
 		public InitcaptureContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1354,9 +1382,11 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class LambdadeclaratorContext extends ParserRuleContext {
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ParameterdeclarationclauseContext parameterdeclarationclause() {
 			return getRuleContext(ParameterdeclarationclauseContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public TerminalNode Mutable() { return getToken(CPP14Parser.Mutable, 0); }
 		public ExceptionspecificationContext exceptionspecification() {
 			return getRuleContext(ExceptionspecificationContext.class,0);
@@ -1459,6 +1489,8 @@ public class CPP14Parser extends Parser {
 		public SimpletypespecifierContext simpletypespecifier() {
 			return getRuleContext(SimpletypespecifierContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public ExpressionlistContext expressionlist() {
 			return getRuleContext(ExpressionlistContext.class,0);
 		}
@@ -1469,9 +1501,11 @@ public class CPP14Parser extends Parser {
 			return getRuleContext(BracedinitlistContext.class,0);
 		}
 		public TerminalNode Dynamic_cast() { return getToken(CPP14Parser.Dynamic_cast, 0); }
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
@@ -1484,13 +1518,19 @@ public class CPP14Parser extends Parser {
 		public PostfixexpressionContext postfixexpression() {
 			return getRuleContext(PostfixexpressionContext.class,0);
 		}
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
+		public TerminalNode Dot() { return getToken(CPP14Parser.Dot, 0); }
 		public IdexpressionContext idexpression() {
 			return getRuleContext(IdexpressionContext.class,0);
 		}
 		public TerminalNode Template() { return getToken(CPP14Parser.Template, 0); }
+		public TerminalNode Arrow() { return getToken(CPP14Parser.Arrow, 0); }
 		public PseudodestructornameContext pseudodestructorname() {
 			return getRuleContext(PseudodestructornameContext.class,0);
 		}
+		public TerminalNode PlusPlus() { return getToken(CPP14Parser.PlusPlus, 0); }
+		public TerminalNode MinusMinus() { return getToken(CPP14Parser.MinusMinus, 0); }
 		public PostfixexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -1508,11 +1548,42 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitPostfixexpression(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			if (Nweak() != null) {
+				isNWeak = true;
 				return Nweak().getText() + " " + postfixexpression().getText();
+			} else if (WStatic_cast() != null) {//Less thetypeid Greater LeftParen expression RightParen'
+				StringBuilder text= new StringBuilder();
+				for (ParseTree child : this.children) {
+					String typeName = thetypeid().getText();
+					if (classMap.get(variableClassMap.get(currentVariable)) != null
+							&& !classMap.get(variableClassMap.get(currentVariable)).superClassSet.contains(typeName.replace("*", ""))
+							|| !isNWeak) {
+							text.append("wstatic_cast<")
+									.append(typeName)
+									.append(">(")
+									.append(expression().getText())
+									.append(")");
+							System.out.println("wstatic_cast Can't be weak.");
+
+					} else {
+						nWeakSet.add(currentVariable);
+						text.append("static_cast<")
+								.append(thetypeid().getText())
+								.append(">(")
+								.append(expression().getText())
+								.append(")");
+					}
+					return text.toString();
+				}
+			} else if (Arrow() != null && pseudodestructorname() != null) {
+				String var = postfixexpression().getText();
+				if (nWeakSet.contains(currentVariable)) {
+					classMap.get(variableClassMap.get(currentVariable)).superClassSet.stream()
+							.map(supClass->classMap.get(supClass).publicFunction)
+							.
+				}
 			}
 			return super.getText();
 		}
@@ -1552,7 +1623,7 @@ public class CPP14Parser extends Parser {
 				setState(537);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(536);
 					expressionlist();
@@ -1572,7 +1643,7 @@ public class CPP14Parser extends Parser {
 				setState(544);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(543);
 					expressionlist();
@@ -1773,7 +1844,7 @@ public class CPP14Parser extends Parser {
 						setState(621);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
-						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 							{
 							setState(620);
 							expressionlist();
@@ -1943,6 +2014,8 @@ public class CPP14Parser extends Parser {
 		public ThetypenameContext thetypename(int i) {
 			return getRuleContext(ThetypenameContext.class,i);
 		}
+		public TerminalNode Doublecolon() { return getToken(CPP14Parser.Doublecolon, 0); }
+		public TerminalNode Tilde() { return getToken(CPP14Parser.Tilde, 0); }
 		public NestednamespecifierContext nestednamespecifier() {
 			return getRuleContext(NestednamespecifierContext.class,0);
 		}
@@ -2065,9 +2138,11 @@ public class CPP14Parser extends Parser {
 		public PostfixexpressionContext postfixexpression() {
 			return getRuleContext(PostfixexpressionContext.class,0);
 		}
+		public TerminalNode PlusPlus() { return getToken(CPP14Parser.PlusPlus, 0); }
 		public CastexpressionContext castexpression() {
 			return getRuleContext(CastexpressionContext.class,0);
 		}
+		public TerminalNode MinusMinus() { return getToken(CPP14Parser.MinusMinus, 0); }
 		public UnaryoperatorContext unaryoperator() {
 			return getRuleContext(UnaryoperatorContext.class,0);
 		}
@@ -2075,9 +2150,12 @@ public class CPP14Parser extends Parser {
 		public UnaryexpressionContext unaryexpression() {
 			return getRuleContext(UnaryexpressionContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
 		public TerminalNode Alignof() { return getToken(CPP14Parser.Alignof, 0); }
 		public NoexceptexpressionContext noexceptexpression() {
@@ -2234,6 +2312,13 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class UnaryoperatorContext extends ParserRuleContext {
+		public TerminalNode Or() { return getToken(CPP14Parser.Or, 0); }
+		public TerminalNode Star() { return getToken(CPP14Parser.Star, 0); }
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
+		public TerminalNode Plus() { return getToken(CPP14Parser.Plus, 0); }
+		public TerminalNode Not() { return getToken(CPP14Parser.Not, 0); }
+		public TerminalNode Tilde() { return getToken(CPP14Parser.Tilde, 0); }
+		public TerminalNode Minus() { return getToken(CPP14Parser.Minus, 0); }
 		public UnaryoperatorContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -2262,7 +2347,7 @@ public class CPP14Parser extends Parser {
 			{
 			setState(707);
 			_la = _input.LA(1);
-			if ( !(((((_la - 87)) & ~0x3f) == 0 && ((1L << (_la - 87)) & ((1L << (Plus - 87)) | (1L << (Minus - 87)) | (1L << (Star - 87)) | (1L << (And - 87)) | (1L << (Or - 87)) | (1L << (Tilde - 87)) | (1L << (Not - 87)))) != 0)) ) {
+			if ( !(((((_la - 89)) & ~0x3f) == 0 && ((1L << (_la - 89)) & ((1L << (Plus - 89)) | (1L << (Minus - 89)) | (1L << (Star - 89)) | (1L << (And - 89)) | (1L << (Or - 89)) | (1L << (Tilde - 89)) | (1L << (Not - 89)))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -2288,15 +2373,18 @@ public class CPP14Parser extends Parser {
 		public NewtypeidContext newtypeid() {
 			return getRuleContext(NewtypeidContext.class,0);
 		}
+		public TerminalNode Doublecolon() { return getToken(CPP14Parser.Doublecolon, 0); }
 		public NewplacementContext newplacement() {
 			return getRuleContext(NewplacementContext.class,0);
 		}
 		public NewinitializerContext newinitializer() {
 			return getRuleContext(NewinitializerContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public NewexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -2317,7 +2405,11 @@ public class CPP14Parser extends Parser {
 
 		@Override
 		public String getText() {
-			return super.getText().replace("new", "new "); // FIXME This have problem. Should change
+			StringBuilder text = new StringBuilder();
+			for (ParseTree child : this.children) {
+				text.append(child.getText() + " ");
+			}
+			return text.toString();
 		}
 	}
 
@@ -2425,9 +2517,11 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class NewplacementContext extends ParserRuleContext {
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ExpressionlistContext expressionlist() {
 			return getRuleContext(ExpressionlistContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public NewplacementContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -2610,9 +2704,11 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class NoptrnewdeclaratorContext extends ParserRuleContext {
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
@@ -2725,6 +2821,8 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class NewinitializerContext extends ParserRuleContext {
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public ExpressionlistContext expressionlist() {
 			return getRuleContext(ExpressionlistContext.class,0);
 		}
@@ -2766,7 +2864,7 @@ public class CPP14Parser extends Parser {
 				setState(771);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(770);
 					expressionlist();
@@ -2804,6 +2902,9 @@ public class CPP14Parser extends Parser {
 		public CastexpressionContext castexpression() {
 			return getRuleContext(CastexpressionContext.class,0);
 		}
+		public TerminalNode Doublecolon() { return getToken(CPP14Parser.Doublecolon, 0); }
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
 		public DeleteexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -2888,9 +2989,11 @@ public class CPP14Parser extends Parser {
 
 	public static class NoexceptexpressionContext extends ParserRuleContext {
 		public TerminalNode Noexcept() { return getToken(CPP14Parser.Noexcept, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public NoexceptexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -2941,9 +3044,11 @@ public class CPP14Parser extends Parser {
 		public UnaryexpressionContext unaryexpression() {
 			return getRuleContext(UnaryexpressionContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public CastexpressionContext castexpression() {
 			return getRuleContext(CastexpressionContext.class,0);
 		}
@@ -3013,6 +3118,8 @@ public class CPP14Parser extends Parser {
 		public PmexpressionContext pmexpression() {
 			return getRuleContext(PmexpressionContext.class,0);
 		}
+		public TerminalNode DotStar() { return getToken(CPP14Parser.DotStar, 0); }
+		public TerminalNode ArrowStar() { return getToken(CPP14Parser.ArrowStar, 0); }
 		public PmexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3029,6 +3136,14 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitPmexpression(this);
 			else return visitor.visitChildren(this);
+		}
+
+		@Override
+		public String getText() {
+			String text = super.getText();
+			if (isAssign)
+				currentVariable = text;
+			return text;
 		}
 	}
 
@@ -3114,6 +3229,9 @@ public class CPP14Parser extends Parser {
 		public MultiplicativeexpressionContext multiplicativeexpression() {
 			return getRuleContext(MultiplicativeexpressionContext.class,0);
 		}
+		public TerminalNode Star() { return getToken(CPP14Parser.Star, 0); }
+		public TerminalNode Div() { return getToken(CPP14Parser.Div, 0); }
+		public TerminalNode Mod() { return getToken(CPP14Parser.Mod, 0); }
 		public MultiplicativeexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3131,7 +3249,15 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitMultiplicativeexpression(this);
 			else return visitor.visitChildren(this);
 		}
-
+		@Override
+		public String getText() {
+			if (isAssign) {
+				if (Star() != null) {
+					variableClassMap.put(pmexpression().getText(), multiplicativeexpression().getText());
+				}
+			}
+			return super.getText();
+		}
 	}
 
 	public final MultiplicativeexpressionContext multiplicativeexpression() throws RecognitionException {
@@ -3228,6 +3354,8 @@ public class CPP14Parser extends Parser {
 		public AdditiveexpressionContext additiveexpression() {
 			return getRuleContext(AdditiveexpressionContext.class,0);
 		}
+		public TerminalNode Plus() { return getToken(CPP14Parser.Plus, 0); }
+		public TerminalNode Minus() { return getToken(CPP14Parser.Minus, 0); }
 		public AdditiveexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3329,6 +3457,7 @@ public class CPP14Parser extends Parser {
 		public ShiftexpressionContext shiftexpression() {
 			return getRuleContext(ShiftexpressionContext.class,0);
 		}
+		public TerminalNode LeftShift() { return getToken(CPP14Parser.LeftShift, 0); }
 		public RightShiftContext rightShift() {
 			return getRuleContext(RightShiftContext.class,0);
 		}
@@ -3433,6 +3562,10 @@ public class CPP14Parser extends Parser {
 		public RelationalexpressionContext relationalexpression() {
 			return getRuleContext(RelationalexpressionContext.class,0);
 		}
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
+		public TerminalNode LessEqual() { return getToken(CPP14Parser.LessEqual, 0); }
+		public TerminalNode GreaterEqual() { return getToken(CPP14Parser.GreaterEqual, 0); }
 		public RelationalexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3558,6 +3691,8 @@ public class CPP14Parser extends Parser {
 		public EqualityexpressionContext equalityexpression() {
 			return getRuleContext(EqualityexpressionContext.class,0);
 		}
+		public TerminalNode Equal() { return getToken(CPP14Parser.Equal, 0); }
+		public TerminalNode NotEqual() { return getToken(CPP14Parser.NotEqual, 0); }
 		public EqualityexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3659,6 +3794,7 @@ public class CPP14Parser extends Parser {
 		public AndexpressionContext andexpression() {
 			return getRuleContext(AndexpressionContext.class,0);
 		}
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
 		public AndexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3742,6 +3878,7 @@ public class CPP14Parser extends Parser {
 		public ExclusiveorexpressionContext exclusiveorexpression() {
 			return getRuleContext(ExclusiveorexpressionContext.class,0);
 		}
+		public TerminalNode Caret() { return getToken(CPP14Parser.Caret, 0); }
 		public ExclusiveorexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3825,6 +3962,7 @@ public class CPP14Parser extends Parser {
 		public InclusiveorexpressionContext inclusiveorexpression() {
 			return getRuleContext(InclusiveorexpressionContext.class,0);
 		}
+		public TerminalNode Or() { return getToken(CPP14Parser.Or, 0); }
 		public InclusiveorexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3908,6 +4046,7 @@ public class CPP14Parser extends Parser {
 		public LogicalandexpressionContext logicalandexpression() {
 			return getRuleContext(LogicalandexpressionContext.class,0);
 		}
+		public TerminalNode AndAnd() { return getToken(CPP14Parser.AndAnd, 0); }
 		public LogicalandexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -3991,6 +4130,7 @@ public class CPP14Parser extends Parser {
 		public LogicalorexpressionContext logicalorexpression() {
 			return getRuleContext(LogicalorexpressionContext.class,0);
 		}
+		public TerminalNode OrOr() { return getToken(CPP14Parser.OrOr, 0); }
 		public LogicalorexpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -4071,9 +4211,11 @@ public class CPP14Parser extends Parser {
 		public LogicalorexpressionContext logicalorexpression() {
 			return getRuleContext(LogicalorexpressionContext.class,0);
 		}
+		public TerminalNode Question() { return getToken(CPP14Parser.Question, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public AssignmentexpressionContext assignmentexpression() {
 			return getRuleContext(AssignmentexpressionContext.class,0);
 		}
@@ -4171,11 +4313,19 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitAssignmentexpression(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
-			if (getChildCount() > 1)
-				return logicalorexpression().getText() + " " + assignmentoperator().getText() + " " + initializerclause().getText();
+
+			if (getChildCount() > 1) {
+				isAssign = true;
+				StringBuilder text = new StringBuilder();
+				text.append(logicalorexpression().getText() + " " +assignmentoperator().getText() + " ");
+				isAssign = false;
+				text.append(initializerclause().getText());
+				isNWeak = false;
+				currentVariable = null;
+				return text.toString();
+			}
 			return super.getText();
 		}
 	}
@@ -4226,9 +4376,19 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class AssignmentoperatorContext extends ParserRuleContext {
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
+		public TerminalNode StarAssign() { return getToken(CPP14Parser.StarAssign, 0); }
+		public TerminalNode DivAssign() { return getToken(CPP14Parser.DivAssign, 0); }
+		public TerminalNode ModAssign() { return getToken(CPP14Parser.ModAssign, 0); }
+		public TerminalNode PlusAssign() { return getToken(CPP14Parser.PlusAssign, 0); }
+		public TerminalNode MinusAssign() { return getToken(CPP14Parser.MinusAssign, 0); }
 		public RightShiftAssignContext rightShiftAssign() {
 			return getRuleContext(RightShiftAssignContext.class,0);
 		}
+		public TerminalNode LeftShiftAssign() { return getToken(CPP14Parser.LeftShiftAssign, 0); }
+		public TerminalNode AndAssign() { return getToken(CPP14Parser.AndAssign, 0); }
+		public TerminalNode XorAssign() { return getToken(CPP14Parser.XorAssign, 0); }
+		public TerminalNode OrAssign() { return getToken(CPP14Parser.OrAssign, 0); }
 		public AssignmentoperatorContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -4297,7 +4457,7 @@ public class CPP14Parser extends Parser {
 				match(MinusAssign);
 				}
 				break;
-			case Greater:
+			case T__1:
 				enterOuterAlt(_localctx, 7);
 				{
 				setState(976);
@@ -4354,6 +4514,7 @@ public class CPP14Parser extends Parser {
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public ExpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -4519,7 +4680,6 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitStatement(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			StringBuilder text = new StringBuilder();
@@ -4671,6 +4831,7 @@ public class CPP14Parser extends Parser {
 
 	public static class LabeledstatementContext extends ParserRuleContext {
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public StatementContext statement() {
 			return getRuleContext(StatementContext.class,0);
 		}
@@ -4788,6 +4949,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class ExpressionstatementContext extends ParserRuleContext {
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
@@ -4820,7 +4982,7 @@ public class CPP14Parser extends Parser {
 			setState(1047);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 				{
 				setState(1046);
 				expression(0);
@@ -4843,6 +5005,8 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class CompoundstatementContext extends ParserRuleContext {
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public StatementseqContext statementseq() {
 			return getRuleContext(StatementseqContext.class,0);
 		}
@@ -4863,12 +5027,11 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitCompoundstatement(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			if (statementseq() != null) {
 				++tabNum;
-				StringBuilder text = new StringBuilder(" {\n" + statementseq().getText());
+				StringBuilder text = new StringBuilder("\n{\n" + statementseq().getText());
 				--tabNum;
 				for (int i = 0; i < tabNum; ++i) {
 					text.append(tab);
@@ -4892,7 +5055,7 @@ public class CPP14Parser extends Parser {
 			setState(1053);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignas) | (1L << Alignof) | (1L << Asm) | (1L << Auto) | (1L << Bool) | (1L << Break) | (1L << Case) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Constexpr) | (1L << Const_cast) | (1L << Continue) | (1L << Decltype) | (1L << Default) | (1L << Delete) | (1L << Do) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << Explicit) | (1L << Extern) | (1L << False) | (1L << Float) | (1L << For) | (1L << Friend) | (1L << Goto) | (1L << If) | (1L << Inline) | (1L << Int) | (1L << Long) | (1L << Mutable) | (1L << Namespace) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Register) | (1L << Reinterpret_cast) | (1L << Return) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static) | (1L << Static_assert) | (1L << Static_cast) | (1L << Struct) | (1L << Switch) | (1L << This))) != 0) || ((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & ((1L << (Thread_local - 64)) | (1L << (Throw - 64)) | (1L << (True - 64)) | (1L << (Try - 64)) | (1L << (Typedef - 64)) | (1L << (Typeid - 64)) | (1L << (Typename - 64)) | (1L << (Union - 64)) | (1L << (Unsigned - 64)) | (1L << (Using - 64)) | (1L << (Virtual - 64)) | (1L << (Void - 64)) | (1L << (Volatile - 64)) | (1L << (Wchar - 64)) | (1L << (While - 64)) | (1L << (WStatic_cast - 64)) | (1L << (LeftParen - 64)) | (1L << (LeftBracket - 64)) | (1L << (LeftBrace - 64)) | (1L << (Plus - 64)) | (1L << (Minus - 64)) | (1L << (Star - 64)) | (1L << (And - 64)) | (1L << (Or - 64)) | (1L << (Tilde - 64)) | (1L << (Not - 64)) | (1L << (AndAnd - 64)) | (1L << (PlusPlus - 64)) | (1L << (MinusMinus - 64)) | (1L << (Doublecolon - 64)) | (1L << (Semi - 64)) | (1L << (Ellipsis - 64)))) != 0) || ((((_la - 128)) & ~0x3f) == 0 && ((1L << (_la - 128)) & ((1L << (Identifier - 128)) | (1L << (Integerliteral - 128)) | (1L << (Characterliteral - 128)) | (1L << (Floatingliteral - 128)) | (1L << (Stringliteral - 128)) | (1L << (Userdefinedintegerliteral - 128)) | (1L << (Userdefinedfloatingliteral - 128)) | (1L << (Userdefinedstringliteral - 128)) | (1L << (Userdefinedcharacterliteral - 128)))) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignas) | (1L << Alignof) | (1L << Asm) | (1L << Auto) | (1L << Bool) | (1L << Break) | (1L << Case) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Constexpr) | (1L << Const_cast) | (1L << Continue) | (1L << Decltype) | (1L << Default) | (1L << Delete) | (1L << Do) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << Explicit) | (1L << Extern) | (1L << False) | (1L << Float) | (1L << For) | (1L << Friend) | (1L << Goto) | (1L << If) | (1L << Inline) | (1L << Int) | (1L << Long) | (1L << Mutable) | (1L << Namespace) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Register) | (1L << Reinterpret_cast) | (1L << Return) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static) | (1L << Static_assert) | (1L << Static_cast) | (1L << Struct) | (1L << Switch))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Thread_local - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Try - 65)) | (1L << (Typedef - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Union - 65)) | (1L << (Unsigned - 65)) | (1L << (Using - 65)) | (1L << (Virtual - 65)) | (1L << (Void - 65)) | (1L << (Volatile - 65)) | (1L << (Wchar - 65)) | (1L << (While - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (AndAnd - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Semi - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Ellipsis - 129)) | (1L << (Identifier - 129)) | (1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
 				{
 				setState(1052);
 				statementseq(0);
@@ -4997,9 +5160,11 @@ public class CPP14Parser extends Parser {
 
 	public static class SelectionstatementContext extends ParserRuleContext {
 		public TerminalNode If() { return getToken(CPP14Parser.If, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ConditionContext condition() {
 			return getRuleContext(ConditionContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public List<StatementContext> statement() {
 			return getRuleContexts(StatementContext.class);
 		}
@@ -5106,6 +5271,7 @@ public class CPP14Parser extends Parser {
 		public DeclaratorContext declarator() {
 			return getRuleContext(DeclaratorContext.class,0);
 		}
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public InitializerclauseContext initializerclause() {
 			return getRuleContext(InitializerclauseContext.class,0);
 		}
@@ -5208,9 +5374,11 @@ public class CPP14Parser extends Parser {
 
 	public static class IterationstatementContext extends ParserRuleContext {
 		public TerminalNode While() { return getToken(CPP14Parser.While, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ConditionContext condition() {
 			return getRuleContext(ConditionContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public StatementContext statement() {
 			return getRuleContext(StatementContext.class,0);
 		}
@@ -5218,6 +5386,7 @@ public class CPP14Parser extends Parser {
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public TerminalNode For() { return getToken(CPP14Parser.For, 0); }
 		public ForinitstatementContext forinitstatement() {
 			return getRuleContext(ForinitstatementContext.class,0);
@@ -5225,6 +5394,7 @@ public class CPP14Parser extends Parser {
 		public ForrangedeclarationContext forrangedeclaration() {
 			return getRuleContext(ForrangedeclarationContext.class,0);
 		}
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public ForrangeinitializerContext forrangeinitializer() {
 			return getRuleContext(ForrangeinitializerContext.class,0);
 		}
@@ -5301,7 +5471,7 @@ public class CPP14Parser extends Parser {
 				setState(1125);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignas) | (1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Constexpr) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << Explicit) | (1L << Extern) | (1L << False) | (1L << Float) | (1L << Friend) | (1L << Inline) | (1L << Int) | (1L << Long) | (1L << Mutable) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Register) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static) | (1L << Static_cast) | (1L << Struct) | (1L << This))) != 0) || ((((_la - 64)) & ~0x3f) == 0 && ((1L << (_la - 64)) & ((1L << (Thread_local - 64)) | (1L << (Throw - 64)) | (1L << (True - 64)) | (1L << (Typedef - 64)) | (1L << (Typeid - 64)) | (1L << (Typename - 64)) | (1L << (Union - 64)) | (1L << (Unsigned - 64)) | (1L << (Virtual - 64)) | (1L << (Void - 64)) | (1L << (Volatile - 64)) | (1L << (Wchar - 64)) | (1L << (WStatic_cast - 64)) | (1L << (LeftParen - 64)) | (1L << (LeftBracket - 64)) | (1L << (Plus - 64)) | (1L << (Minus - 64)) | (1L << (Star - 64)) | (1L << (And - 64)) | (1L << (Or - 64)) | (1L << (Tilde - 64)) | (1L << (Not - 64)) | (1L << (PlusPlus - 64)) | (1L << (MinusMinus - 64)) | (1L << (Doublecolon - 64)))) != 0) || ((((_la - 128)) & ~0x3f) == 0 && ((1L << (_la - 128)) & ((1L << (Identifier - 128)) | (1L << (Integerliteral - 128)) | (1L << (Characterliteral - 128)) | (1L << (Floatingliteral - 128)) | (1L << (Stringliteral - 128)) | (1L << (Userdefinedintegerliteral - 128)) | (1L << (Userdefinedfloatingliteral - 128)) | (1L << (Userdefinedstringliteral - 128)) | (1L << (Userdefinedcharacterliteral - 128)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignas) | (1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Constexpr) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << Explicit) | (1L << Extern) | (1L << False) | (1L << Float) | (1L << Friend) | (1L << Inline) | (1L << Int) | (1L << Long) | (1L << Mutable) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Register) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static) | (1L << Static_cast) | (1L << Struct))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Thread_local - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typedef - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Union - 65)) | (1L << (Unsigned - 65)) | (1L << (Virtual - 65)) | (1L << (Void - 65)) | (1L << (Volatile - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(1124);
 					condition();
@@ -5313,7 +5483,7 @@ public class CPP14Parser extends Parser {
 				setState(1129);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(1128);
 					expression(0);
@@ -5599,6 +5769,7 @@ public class CPP14Parser extends Parser {
 
 	public static class JumpstatementContext extends ParserRuleContext {
 		public TerminalNode Break() { return getToken(CPP14Parser.Break, 0); }
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public TerminalNode Continue() { return getToken(CPP14Parser.Continue, 0); }
 		public TerminalNode Return() { return getToken(CPP14Parser.Return, 0); }
 		public ExpressionContext expression() {
@@ -5662,7 +5833,7 @@ public class CPP14Parser extends Parser {
 				setState(1164);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(1163);
 					expression(0);
@@ -5728,6 +5899,10 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitDeclarationstatement(this);
 			else return visitor.visitChildren(this);
+		}
+		@Override
+		public String getText() {
+			return super.getText() + "\n\n";
 		}
 	}
 
@@ -5878,7 +6053,6 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitDeclaration(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			return super.getText() + "\n\n";
@@ -6091,9 +6265,11 @@ public class CPP14Parser extends Parser {
 	public static class AliasdeclarationContext extends ParserRuleContext {
 		public TerminalNode Using() { return getToken(CPP14Parser.Using, 0); }
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
@@ -6157,6 +6333,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class SimpledeclarationContext extends ParserRuleContext {
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public DeclspecifierseqContext declspecifierseq() {
 			return getRuleContext(DeclspecifierseqContext.class,0);
 		}
@@ -6182,11 +6359,6 @@ public class CPP14Parser extends Parser {
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitSimpledeclaration(this);
 			else return visitor.visitChildren(this);
-		}
-
-		@Override
-		public String getText() {
-			return super.getText();
 		}
 	}
 
@@ -6256,7 +6428,7 @@ public class CPP14Parser extends Parser {
 				setState(1222);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (_la==Decltype || _la==Operator || ((((_la - 81)) & ~0x3f) == 0 && ((1L << (_la - 81)) & ((1L << (LeftParen - 81)) | (1L << (Star - 81)) | (1L << (And - 81)) | (1L << (Tilde - 81)) | (1L << (AndAnd - 81)) | (1L << (Doublecolon - 81)) | (1L << (Ellipsis - 81)) | (1L << (Identifier - 81)))) != 0)) {
+				if (_la==Decltype || _la==Operator || ((((_la - 83)) & ~0x3f) == 0 && ((1L << (_la - 83)) & ((1L << (LeftParen - 83)) | (1L << (Star - 83)) | (1L << (And - 83)) | (1L << (Tilde - 83)) | (1L << (AndAnd - 83)) | (1L << (Doublecolon - 83)) | (1L << (Ellipsis - 83)) | (1L << (Identifier - 83)))) != 0)) {
 					{
 					setState(1221);
 					initdeclaratorlist(0);
@@ -6306,10 +6478,14 @@ public class CPP14Parser extends Parser {
 
 	public static class Static_assertdeclarationContext extends ParserRuleContext {
 		public TerminalNode Static_assert() { return getToken(CPP14Parser.Static_assert, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public TerminalNode Stringliteral() { return getToken(CPP14Parser.Stringliteral, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public Static_assertdeclarationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -6363,6 +6539,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class EmptydeclarationContext extends ParserRuleContext {
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public EmptydeclarationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -6407,6 +6584,7 @@ public class CPP14Parser extends Parser {
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public AttributedeclarationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -6479,7 +6657,6 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitDeclspecifier(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			if (typespecifier() != null) {
@@ -6694,7 +6871,7 @@ public class CPP14Parser extends Parser {
 			{
 			setState(1264);
 			_la = _input.LA(1);
-			if ( !(((((_la - 29)) & ~0x3f) == 0 && ((1L << (_la - 29)) & ((1L << (Extern - 29)) | (1L << (Mutable - 29)) | (1L << (Register - 29)) | (1L << (Static - 29)) | (1L << (Thread_local - 29)))) != 0)) ) {
+			if ( !(((((_la - 31)) & ~0x3f) == 0 && ((1L << (_la - 31)) & ((1L << (Extern - 31)) | (1L << (Mutable - 31)) | (1L << (Register - 31)) | (1L << (Static - 31)) | (1L << (Thread_local - 31)))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -6736,6 +6913,14 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitFunctionspecifier(this);
 			else return visitor.visitChildren(this);
 		}
+
+		@Override
+		public String getText() {
+			if (Virtual() != null) {
+				isWrongWeak = true;
+			}
+			return super.getText();
+		}
 	}
 
 	public final FunctionspecifierContext functionspecifier() throws RecognitionException {
@@ -6747,7 +6932,7 @@ public class CPP14Parser extends Parser {
 			{
 			setState(1266);
 			_la = _input.LA(1);
-			if ( !(((((_la - 27)) & ~0x3f) == 0 && ((1L << (_la - 27)) & ((1L << (Explicit - 27)) | (1L << (Inline - 27)) | (1L << (Virtual - 27)))) != 0)) ) {
+			if ( !(((((_la - 29)) & ~0x3f) == 0 && ((1L << (_la - 29)) & ((1L << (Explicit - 29)) | (1L << (Inline - 29)) | (1L << (Virtual - 29)))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -7414,9 +7599,11 @@ public class CPP14Parser extends Parser {
 
 	public static class DecltypespecifierContext extends ParserRuleContext {
 		public TerminalNode Decltype() { return getToken(CPP14Parser.Decltype, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public TerminalNode Auto() { return getToken(CPP14Parser.Auto, 0); }
 		public DecltypespecifierContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -7663,9 +7850,12 @@ public class CPP14Parser extends Parser {
 		public EnumheadContext enumhead() {
 			return getRuleContext(EnumheadContext.class,0);
 		}
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public EnumeratorlistContext enumeratorlist() {
 			return getRuleContext(EnumeratorlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public EnumspecifierContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -7869,6 +8059,7 @@ public class CPP14Parser extends Parser {
 			return getRuleContext(EnumkeyContext.class,0);
 		}
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
@@ -8009,6 +8200,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class EnumbaseContext extends ParserRuleContext {
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public TypespecifierseqContext typespecifierseq() {
 			return getRuleContext(TypespecifierseqContext.class,0);
 		}
@@ -8061,6 +8253,7 @@ public class CPP14Parser extends Parser {
 		public EnumeratorlistContext enumeratorlist() {
 			return getRuleContext(EnumeratorlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public EnumeratorlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -8141,6 +8334,7 @@ public class CPP14Parser extends Parser {
 		public EnumeratorContext enumerator() {
 			return getRuleContext(EnumeratorContext.class,0);
 		}
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
@@ -8468,9 +8662,11 @@ public class CPP14Parser extends Parser {
 	public static class OriginalnamespacedefinitionContext extends ParserRuleContext {
 		public TerminalNode Namespace() { return getToken(CPP14Parser.Namespace, 0); }
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
 		public NamespacebodyContext namespacebody() {
 			return getRuleContext(NamespacebodyContext.class,0);
 		}
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public TerminalNode Inline() { return getToken(CPP14Parser.Inline, 0); }
 		public OriginalnamespacedefinitionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -8536,9 +8732,11 @@ public class CPP14Parser extends Parser {
 		public OriginalnamespacenameContext originalnamespacename() {
 			return getRuleContext(OriginalnamespacenameContext.class,0);
 		}
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
 		public NamespacebodyContext namespacebody() {
 			return getRuleContext(NamespacebodyContext.class,0);
 		}
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public TerminalNode Inline() { return getToken(CPP14Parser.Inline, 0); }
 		public ExtensionnamespacedefinitionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -8601,9 +8799,11 @@ public class CPP14Parser extends Parser {
 
 	public static class UnnamednamespacedefinitionContext extends ParserRuleContext {
 		public TerminalNode Namespace() { return getToken(CPP14Parser.Namespace, 0); }
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
 		public NamespacebodyContext namespacebody() {
 			return getRuleContext(NamespacebodyContext.class,0);
 		}
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public TerminalNode Inline() { return getToken(CPP14Parser.Inline, 0); }
 		public UnnamednamespacedefinitionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -8695,7 +8895,7 @@ public class CPP14Parser extends Parser {
 			setState(1486);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Asm - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Namespace - 3)) | (1L << (Operator - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Static_assert - 3)) | (1L << (Struct - 3)) | (1L << (Template - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Using - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftParen - 68)) | (1L << (LeftBracket - 68)) | (1L << (Star - 68)) | (1L << (And - 68)) | (1L << (Tilde - 68)) | (1L << (AndAnd - 68)) | (1L << (Doublecolon - 68)) | (1L << (Semi - 68)) | (1L << (Ellipsis - 68)) | (1L << (Identifier - 68)))) != 0)) {
+			if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Asm - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Namespace - 5)) | (1L << (Operator - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Static_assert - 5)) | (1L << (Struct - 5)) | (1L << (Template - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Using - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftParen - 70)) | (1L << (LeftBracket - 70)) | (1L << (Star - 70)) | (1L << (And - 70)) | (1L << (Tilde - 70)) | (1L << (AndAnd - 70)) | (1L << (Doublecolon - 70)) | (1L << (Semi - 70)) | (1L << (Ellipsis - 70)) | (1L << (Identifier - 70)))) != 0)) {
 				{
 				setState(1485);
 				declarationseq(0);
@@ -8760,9 +8960,11 @@ public class CPP14Parser extends Parser {
 	public static class NamespacealiasdefinitionContext extends ParserRuleContext {
 		public TerminalNode Namespace() { return getToken(CPP14Parser.Namespace, 0); }
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public QualifiednamespacespecifierContext qualifiednamespacespecifier() {
 			return getRuleContext(QualifiednamespacespecifierContext.class,0);
 		}
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public NamespacealiasdefinitionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -8876,7 +9078,9 @@ public class CPP14Parser extends Parser {
 		public UnqualifiedidContext unqualifiedid() {
 			return getRuleContext(UnqualifiedidContext.class,0);
 		}
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public TerminalNode Typename() { return getToken(CPP14Parser.Typename, 0); }
+		public TerminalNode Doublecolon() { return getToken(CPP14Parser.Doublecolon, 0); }
 		public UsingdeclarationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -8894,7 +9098,6 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitUsingdeclaration(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			StringBuilder text = new StringBuilder(Using().getText() + " ");
@@ -8972,6 +9175,7 @@ public class CPP14Parser extends Parser {
 		public NamespacenameContext namespacename() {
 			return getRuleContext(NamespacenameContext.class,0);
 		}
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
@@ -9047,7 +9251,10 @@ public class CPP14Parser extends Parser {
 
 	public static class AsmdefinitionContext extends ParserRuleContext {
 		public TerminalNode Asm() { return getToken(CPP14Parser.Asm, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public TerminalNode Stringliteral() { return getToken(CPP14Parser.Stringliteral, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public AsmdefinitionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -9099,6 +9306,8 @@ public class CPP14Parser extends Parser {
 	public static class LinkagespecificationContext extends ParserRuleContext {
 		public TerminalNode Extern() { return getToken(CPP14Parser.Extern, 0); }
 		public TerminalNode Stringliteral() { return getToken(CPP14Parser.Stringliteral, 0); }
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public DeclarationseqContext declarationseq() {
 			return getRuleContext(DeclarationseqContext.class,0);
 		}
@@ -9144,7 +9353,7 @@ public class CPP14Parser extends Parser {
 				setState(1537);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Asm - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Namespace - 3)) | (1L << (Operator - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Static_assert - 3)) | (1L << (Struct - 3)) | (1L << (Template - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Using - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftParen - 68)) | (1L << (LeftBracket - 68)) | (1L << (Star - 68)) | (1L << (And - 68)) | (1L << (Tilde - 68)) | (1L << (AndAnd - 68)) | (1L << (Doublecolon - 68)) | (1L << (Semi - 68)) | (1L << (Ellipsis - 68)) | (1L << (Identifier - 68)))) != 0)) {
+				if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Asm - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Namespace - 5)) | (1L << (Operator - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Static_assert - 5)) | (1L << (Struct - 5)) | (1L << (Template - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Using - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftParen - 70)) | (1L << (LeftBracket - 70)) | (1L << (Star - 70)) | (1L << (And - 70)) | (1L << (Tilde - 70)) | (1L << (AndAnd - 70)) | (1L << (Doublecolon - 70)) | (1L << (Semi - 70)) | (1L << (Ellipsis - 70)) | (1L << (Identifier - 70)))) != 0)) {
 					{
 					setState(1536);
 					declarationseq(0);
@@ -9261,8 +9470,16 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class AttributespecifierContext extends ParserRuleContext {
+		public List<TerminalNode> LeftBracket() { return getTokens(CPP14Parser.LeftBracket); }
+		public TerminalNode LeftBracket(int i) {
+			return getToken(CPP14Parser.LeftBracket, i);
+		}
 		public AttributelistContext attributelist() {
 			return getRuleContext(AttributelistContext.class,0);
+		}
+		public List<TerminalNode> RightBracket() { return getTokens(CPP14Parser.RightBracket); }
+		public TerminalNode RightBracket(int i) {
+			return getToken(CPP14Parser.RightBracket, i);
 		}
 		public AlignmentspecifierContext alignmentspecifier() {
 			return getRuleContext(AlignmentspecifierContext.class,0);
@@ -9332,9 +9549,12 @@ public class CPP14Parser extends Parser {
 
 	public static class AlignmentspecifierContext extends ParserRuleContext {
 		public TerminalNode Alignas() { return getToken(CPP14Parser.Alignas, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
@@ -9428,9 +9648,11 @@ public class CPP14Parser extends Parser {
 		public AttributeContext attribute() {
 			return getRuleContext(AttributeContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public AttributelistContext attributelist() {
 			return getRuleContext(AttributelistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public AttributelistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -9676,6 +9898,7 @@ public class CPP14Parser extends Parser {
 		public AttributenamespaceContext attributenamespace() {
 			return getRuleContext(AttributenamespaceContext.class,0);
 		}
+		public TerminalNode Doublecolon() { return getToken(CPP14Parser.Doublecolon, 0); }
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
 		public AttributescopedtokenContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -9764,9 +9987,11 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class AttributeargumentclauseContext extends ParserRuleContext {
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public BalancedtokenseqContext balancedtokenseq() {
 			return getRuleContext(BalancedtokenseqContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public AttributeargumentclauseContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -9901,9 +10126,15 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class BalancedtokenContext extends ParserRuleContext {
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public BalancedtokenseqContext balancedtokenseq() {
 			return getRuleContext(BalancedtokenseqContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public BalancedtokenContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -9985,6 +10216,7 @@ public class CPP14Parser extends Parser {
 		public InitdeclaratorlistContext initdeclaratorlist() {
 			return getRuleContext(InitdeclaratorlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public InitdeclaratorlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -10260,15 +10492,19 @@ public class CPP14Parser extends Parser {
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public PtrdeclaratorContext ptrdeclarator() {
 			return getRuleContext(PtrdeclaratorContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public NoptrdeclaratorContext noptrdeclarator() {
 			return getRuleContext(NoptrdeclaratorContext.class,0);
 		}
 		public ParametersandqualifiersContext parametersandqualifiers() {
 			return getRuleContext(ParametersandqualifiersContext.class,0);
 		}
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
@@ -10377,7 +10613,7 @@ public class CPP14Parser extends Parser {
 						setState(1693);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
-						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 							{
 							setState(1692);
 							constantexpression();
@@ -10419,9 +10655,11 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class ParametersandqualifiersContext extends ParserRuleContext {
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ParameterdeclarationclauseContext parameterdeclarationclause() {
 			return getRuleContext(ParameterdeclarationclauseContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public CvqualifierseqContext cvqualifierseq() {
 			return getRuleContext(CvqualifierseqContext.class,0);
 		}
@@ -10519,6 +10757,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class TrailingreturntypeContext extends ParserRuleContext {
+		public TerminalNode Arrow() { return getToken(CPP14Parser.Arrow, 0); }
 		public TrailingtypespecifierseqContext trailingtypespecifierseq() {
 			return getRuleContext(TrailingtypespecifierseqContext.class,0);
 		}
@@ -10578,12 +10817,15 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class PtroperatorContext extends ParserRuleContext {
+		public TerminalNode Star() { return getToken(CPP14Parser.Star, 0); }
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
 		public CvqualifierseqContext cvqualifierseq() {
 			return getRuleContext(CvqualifierseqContext.class,0);
 		}
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
+		public TerminalNode AndAnd() { return getToken(CPP14Parser.AndAnd, 0); }
 		public NestednamespecifierContext nestednamespecifier() {
 			return getRuleContext(NestednamespecifierContext.class,0);
 		}
@@ -10830,6 +11072,8 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class RefqualifierContext extends ParserRuleContext {
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
+		public TerminalNode AndAnd() { return getToken(CPP14Parser.AndAnd, 0); }
 		public RefqualifierContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -10883,6 +11127,7 @@ public class CPP14Parser extends Parser {
 		public IdexpressionContext idexpression() {
 			return getRuleContext(IdexpressionContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public DeclaratoridContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -11164,15 +11409,19 @@ public class CPP14Parser extends Parser {
 		public ParametersandqualifiersContext parametersandqualifiers() {
 			return getRuleContext(ParametersandqualifiersContext.class,0);
 		}
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public PtrabstractdeclaratorContext ptrabstractdeclarator() {
 			return getRuleContext(PtrabstractdeclaratorContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public NoptrabstractdeclaratorContext noptrabstractdeclarator() {
 			return getRuleContext(NoptrabstractdeclaratorContext.class,0);
 		}
@@ -11227,7 +11476,7 @@ public class CPP14Parser extends Parser {
 				setState(1787);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(1786);
 					constantexpression();
@@ -11292,7 +11541,7 @@ public class CPP14Parser extends Parser {
 						setState(1804);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
-						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 							{
 							setState(1803);
 							constantexpression();
@@ -11406,12 +11655,15 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class NoptrabstractpackdeclaratorContext extends ParserRuleContext {
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public NoptrabstractpackdeclaratorContext noptrabstractpackdeclarator() {
 			return getRuleContext(NoptrabstractpackdeclaratorContext.class,0);
 		}
 		public ParametersandqualifiersContext parametersandqualifiers() {
 			return getRuleContext(ParametersandqualifiersContext.class,0);
 		}
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
@@ -11490,7 +11742,7 @@ public class CPP14Parser extends Parser {
 						setState(1829);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
-						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+						if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 							{
 							setState(1828);
 							constantexpression();
@@ -11535,6 +11787,8 @@ public class CPP14Parser extends Parser {
 		public ParameterdeclarationlistContext parameterdeclarationlist() {
 			return getRuleContext(ParameterdeclarationlistContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public ParameterdeclarationclauseContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -11568,7 +11822,7 @@ public class CPP14Parser extends Parser {
 				setState(1841);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Struct - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftBracket - 68)) | (1L << (Doublecolon - 68)) | (1L << (Identifier - 68)))) != 0)) {
+				if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Struct - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftBracket - 70)) | (1L << (Doublecolon - 70)) | (1L << (Identifier - 70)))) != 0)) {
 					{
 					setState(1840);
 					parameterdeclarationlist(0);
@@ -11618,6 +11872,7 @@ public class CPP14Parser extends Parser {
 		public ParameterdeclarationlistContext parameterdeclarationlist() {
 			return getRuleContext(ParameterdeclarationlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public ParameterdeclarationlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -11704,6 +11959,7 @@ public class CPP14Parser extends Parser {
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public InitializerclauseContext initializerclause() {
 			return getRuleContext(InitializerclauseContext.class,0);
 		}
@@ -11824,7 +12080,7 @@ public class CPP14Parser extends Parser {
 				setState(1889);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (_la==Decltype || ((((_la - 81)) & ~0x3f) == 0 && ((1L << (_la - 81)) & ((1L << (LeftParen - 81)) | (1L << (LeftBracket - 81)) | (1L << (Star - 81)) | (1L << (And - 81)) | (1L << (AndAnd - 81)) | (1L << (Doublecolon - 81)) | (1L << (Ellipsis - 81)) | (1L << (Identifier - 81)))) != 0)) {
+				if (_la==Decltype || ((((_la - 83)) & ~0x3f) == 0 && ((1L << (_la - 83)) & ((1L << (LeftParen - 83)) | (1L << (LeftBracket - 83)) | (1L << (Star - 83)) | (1L << (And - 83)) | (1L << (AndAnd - 83)) | (1L << (Doublecolon - 83)) | (1L << (Ellipsis - 83)) | (1L << (Identifier - 83)))) != 0)) {
 					{
 					setState(1888);
 					abstractdeclarator();
@@ -11884,6 +12140,15 @@ public class CPP14Parser extends Parser {
 			else return visitor.visitChildren(this);
 		}
 
+		@Override
+		public String getText() {
+			if (currentClassName != null) {
+				if (declarator().ptrdeclarator().noptrdeclarator().noptrdeclarator().getText().equals(currentClassName)) {
+					isWrongWeak = true;
+				}
+			}
+			return super.getText();
+		}
 	}
 
 	public final FunctiondefinitionContext functiondefinition() throws RecognitionException {
@@ -11950,7 +12215,9 @@ public class CPP14Parser extends Parser {
 		public FunctiontryblockContext functiontryblock() {
 			return getRuleContext(FunctiontryblockContext.class,0);
 		}
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public TerminalNode Default() { return getToken(CPP14Parser.Default, 0); }
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public TerminalNode Delete() { return getToken(CPP14Parser.Delete, 0); }
 		public FunctionbodyContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -12042,9 +12309,11 @@ public class CPP14Parser extends Parser {
 		public BraceorequalinitializerContext braceorequalinitializer() {
 			return getRuleContext(BraceorequalinitializerContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ExpressionlistContext expressionlist() {
 			return getRuleContext(ExpressionlistContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public InitializerContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -12106,6 +12375,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class BraceorequalinitializerContext extends ParserRuleContext {
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public InitializerclauseContext initializerclause() {
 			return getRuleContext(InitializerclauseContext.class,0);
 		}
@@ -12289,9 +12559,11 @@ public class CPP14Parser extends Parser {
 		public InitializerclauseContext initializerclause() {
 			return getRuleContext(InitializerclauseContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public InitializerlistContext initializerlist() {
 			return getRuleContext(InitializerlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public InitializerlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -12389,9 +12661,12 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class BracedinitlistContext extends ParserRuleContext {
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
 		public InitializerlistContext initializerlist() {
 			return getRuleContext(InitializerlistContext.class,0);
 		}
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public BracedinitlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -12524,6 +12799,8 @@ public class CPP14Parser extends Parser {
 		public ClassheadContext classhead() {
 			return getRuleContext(ClassheadContext.class,0);
 		}
+		public TerminalNode LeftBrace() { return getToken(CPP14Parser.LeftBrace, 0); }
+		public TerminalNode RightBrace() { return getToken(CPP14Parser.RightBrace, 0); }
 		public MemberspecificationContext memberspecification() {
 			return getRuleContext(MemberspecificationContext.class,0);
 		}
@@ -12544,29 +12821,47 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitClassspecifier(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
+			isWeak = false;
+			weakClass = null;
+			currentAccessSpecifier = null;
+			superClassSet = new HashSet();
 			StringBuilder text = new StringBuilder();
 			text.append(classhead().getText());
-			text.append( "{\n" + memberspecification().getText() +"}");
-
-			StringBuilder weakClass = new StringBuilder();
-
-			for (String weakClassName : weakClassMap.keySet()) {
-				if (weakClassMap.get(weakClassName)) {
-					weakClass.append("class _")
-							.append(weakClassName)
-							.append(": public ")
-							.append(weakClassName)
-							.append(" {\n};\n\n");
-					weakClassMap.put(weakClassName, false);
-				}
+			if (isWeak) {
+				weakClass.superClassSet.addAll(superClassSet);
+				classMap.put(currentClassName, weakClass);
 			}
+			text.append( "\n{\n" + memberspecification().getText() +"}");
 
-			weakClass.append(text);
+			if (weakClass != null) {
+				StringBuilder newWeakClassText = new StringBuilder();
+				newWeakClassText.append("\n\n")
+						.append(weakClass.classkey)
+						.append(" _")
+						.append(currentClassName+" ")
+						.append(weakClass.baseClause)
+						.append("\n{");
+				if (!weakClass.defaultFunction.toString().equals("")) {
+					newWeakClassText.append("\n")
+							.append(weakClass.defaultFunction);
+				} else if (!weakClass.privateFunction.toString().equals("")) {
+					newWeakClassText.append("\nprivate:\n")
+							.append(weakClass.privateFunction);
+				} else if (!weakClass.protectedFunction.toString().equals("")) {
+					newWeakClassText.append("\nprotected:\n")
+							.append(weakClass.protectedFunction);
+				} else if (!weakClass.publicFunction.toString().equals("")) {
+					newWeakClassText.append("\npublic:\n")
+							.append(weakClass.publicFunction);
+				}
 
-			return weakClass.toString();
+				newWeakClassText.append("};\n\n")
+						.append(text);
+				return newWeakClassText.toString();
+			}
+			return text.toString();
 		}
 	}
 
@@ -12584,7 +12879,7 @@ public class CPP14Parser extends Parser {
 			setState(1971);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Operator - 3)) | (1L << (Private - 3)) | (1L << (Protected - 3)) | (1L << (Public - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Static_assert - 3)) | (1L << (Struct - 3)) | (1L << (Template - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Using - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftParen - 68)) | (1L << (LeftBracket - 68)) | (1L << (Star - 68)) | (1L << (And - 68)) | (1L << (Tilde - 68)) | (1L << (AndAnd - 68)) | (1L << (Colon - 68)) | (1L << (Doublecolon - 68)) | (1L << (Semi - 68)) | (1L << (Ellipsis - 68)) | (1L << (Identifier - 68)))) != 0)) {
+			if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Operator - 5)) | (1L << (Private - 5)) | (1L << (Protected - 5)) | (1L << (Public - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Static_assert - 5)) | (1L << (Struct - 5)) | (1L << (Template - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Using - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftParen - 70)) | (1L << (LeftBracket - 70)) | (1L << (Star - 70)) | (1L << (And - 70)) | (1L << (Tilde - 70)) | (1L << (AndAnd - 70)) | (1L << (Colon - 70)) | (1L << (Doublecolon - 70)) | (1L << (Semi - 70)) | (1L << (Ellipsis - 70)) | (1L << (Identifier - 70)))) != 0)) {
 				{
 				setState(1970);
 				memberspecification();
@@ -12641,18 +12936,23 @@ public class CPP14Parser extends Parser {
 		}
 		@Override
 		public String getText() {
+			currentClassName = classheadname().getText();
+
 			StringBuilder text = new StringBuilder(classkey().getText() + " ");
-			if (attributespecifierseq() != null) {
-				text.append(attributespecifierseq().getText() + " ");
+			for (ParseTree child : children) {
+				text.append(child.getText() + " ");
 			}
-			text.append(classheadname().getText() + " ");
-			if (classvirtspecifier() != null) {
-				text.append(classvirtspecifier().getText() + " ");
-			}
-			if (baseclause() != null) {
-				text.append(baseclause().getText() + " ");
-			}
-			return text.toString();
+//			if (attributespecifierseq() != null) {
+//				text.append(attributespecifierseq().getText() + " ");
+//			}
+//			text.append(classheadname().getText() + " ");
+//			if (classvirtspecifier() != null) {
+//				text.append(classvirtspecifier().getText() + " ");
+//			}
+//			if (baseclause() != null) {
+//				text.append(baseclause().getText() + " ");
+//			}
+			return text.toString(); // FIXME : this public is treated.
 		}
 	}
 
@@ -12874,7 +13174,7 @@ public class CPP14Parser extends Parser {
 			{
 			setState(2002);
 			_la = _input.LA(1);
-			if ( !(((((_la - 14)) & ~0x3f) == 0 && ((1L << (_la - 14)) & ((1L << (Class - 14)) | (1L << (Struct - 14)) | (1L << (Union - 14)))) != 0)) ) {
+			if ( !(((((_la - 16)) & ~0x3f) == 0 && ((1L << (_la - 16)) & ((1L << (Class - 16)) | (1L << (Struct - 16)) | (1L << (Union - 16)))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -12905,6 +13205,7 @@ public class CPP14Parser extends Parser {
 		public AccessspecifierContext accessspecifier() {
 			return getRuleContext(AccessspecifierContext.class,0);
 		}
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public MemberspecificationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -12922,19 +13223,19 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitMemberspecification(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			StringBuilder text = new StringBuilder();
 			if (accessspecifier() != null) {
+				currentAccessSpecifier = accessspecifier().getText();
 				text.append(accessspecifier().getText() + ":\n");
 			} else {
-				text.append(memberdeclaration().getText() +"\n");
+				text.append(memberdeclaration().getText());
 			}
 			if (memberspecification() != null) {
 				text.append(memberspecification().getText());
 			}
-			return text.toString();
+			return text.toString(); // FIXME : virtual function should save.
 		}
 	}
 
@@ -13002,7 +13303,7 @@ public class CPP14Parser extends Parser {
 				setState(2006);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Operator - 3)) | (1L << (Private - 3)) | (1L << (Protected - 3)) | (1L << (Public - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Static_assert - 3)) | (1L << (Struct - 3)) | (1L << (Template - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Using - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftParen - 68)) | (1L << (LeftBracket - 68)) | (1L << (Star - 68)) | (1L << (And - 68)) | (1L << (Tilde - 68)) | (1L << (AndAnd - 68)) | (1L << (Colon - 68)) | (1L << (Doublecolon - 68)) | (1L << (Semi - 68)) | (1L << (Ellipsis - 68)) | (1L << (Identifier - 68)))) != 0)) {
+				if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Operator - 5)) | (1L << (Private - 5)) | (1L << (Protected - 5)) | (1L << (Public - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Static_assert - 5)) | (1L << (Struct - 5)) | (1L << (Template - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Using - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftParen - 70)) | (1L << (LeftBracket - 70)) | (1L << (Star - 70)) | (1L << (And - 70)) | (1L << (Tilde - 70)) | (1L << (AndAnd - 70)) | (1L << (Colon - 70)) | (1L << (Doublecolon - 70)) | (1L << (Semi - 70)) | (1L << (Ellipsis - 70)) | (1L << (Identifier - 70)))) != 0)) {
 					{
 					setState(2005);
 					memberspecification();
@@ -13023,7 +13324,7 @@ public class CPP14Parser extends Parser {
 				setState(2011);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (((((_la - 3)) & ~0x3f) == 0 && ((1L << (_la - 3)) & ((1L << (Alignas - 3)) | (1L << (Auto - 3)) | (1L << (Bool - 3)) | (1L << (Char - 3)) | (1L << (Char16 - 3)) | (1L << (Char32 - 3)) | (1L << (Class - 3)) | (1L << (Const - 3)) | (1L << (Constexpr - 3)) | (1L << (Decltype - 3)) | (1L << (Double - 3)) | (1L << (Enum - 3)) | (1L << (Explicit - 3)) | (1L << (Extern - 3)) | (1L << (Float - 3)) | (1L << (Friend - 3)) | (1L << (Inline - 3)) | (1L << (Int - 3)) | (1L << (Long - 3)) | (1L << (Mutable - 3)) | (1L << (Operator - 3)) | (1L << (Private - 3)) | (1L << (Protected - 3)) | (1L << (Public - 3)) | (1L << (Register - 3)) | (1L << (Short - 3)) | (1L << (Signed - 3)) | (1L << (Static - 3)) | (1L << (Static_assert - 3)) | (1L << (Struct - 3)) | (1L << (Template - 3)) | (1L << (Thread_local - 3)))) != 0) || ((((_la - 68)) & ~0x3f) == 0 && ((1L << (_la - 68)) & ((1L << (Typedef - 68)) | (1L << (Typename - 68)) | (1L << (Union - 68)) | (1L << (Unsigned - 68)) | (1L << (Using - 68)) | (1L << (Virtual - 68)) | (1L << (Void - 68)) | (1L << (Volatile - 68)) | (1L << (Wchar - 68)) | (1L << (LeftParen - 68)) | (1L << (LeftBracket - 68)) | (1L << (Star - 68)) | (1L << (And - 68)) | (1L << (Tilde - 68)) | (1L << (AndAnd - 68)) | (1L << (Colon - 68)) | (1L << (Doublecolon - 68)) | (1L << (Semi - 68)) | (1L << (Ellipsis - 68)) | (1L << (Identifier - 68)))) != 0)) {
+				if (((((_la - 5)) & ~0x3f) == 0 && ((1L << (_la - 5)) & ((1L << (Alignas - 5)) | (1L << (Auto - 5)) | (1L << (Bool - 5)) | (1L << (Char - 5)) | (1L << (Char16 - 5)) | (1L << (Char32 - 5)) | (1L << (Class - 5)) | (1L << (Const - 5)) | (1L << (Constexpr - 5)) | (1L << (Decltype - 5)) | (1L << (Double - 5)) | (1L << (Enum - 5)) | (1L << (Explicit - 5)) | (1L << (Extern - 5)) | (1L << (Float - 5)) | (1L << (Friend - 5)) | (1L << (Inline - 5)) | (1L << (Int - 5)) | (1L << (Long - 5)) | (1L << (Mutable - 5)) | (1L << (Operator - 5)) | (1L << (Private - 5)) | (1L << (Protected - 5)) | (1L << (Public - 5)) | (1L << (Register - 5)) | (1L << (Short - 5)) | (1L << (Signed - 5)) | (1L << (Static - 5)) | (1L << (Static_assert - 5)) | (1L << (Struct - 5)) | (1L << (Template - 5)) | (1L << (Thread_local - 5)))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typedef - 70)) | (1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Using - 70)) | (1L << (Virtual - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (LeftParen - 70)) | (1L << (LeftBracket - 70)) | (1L << (Star - 70)) | (1L << (And - 70)) | (1L << (Tilde - 70)) | (1L << (AndAnd - 70)) | (1L << (Colon - 70)) | (1L << (Doublecolon - 70)) | (1L << (Semi - 70)) | (1L << (Ellipsis - 70)) | (1L << (Identifier - 70)))) != 0)) {
 					{
 					setState(2010);
 					memberspecification();
@@ -13048,6 +13349,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class MemberdeclarationContext extends ParserRuleContext {
+		public TerminalNode Semi() { return getToken(CPP14Parser.Semi, 0); }
 		public AttributespecifierseqContext attributespecifierseq() {
 			return getRuleContext(AttributespecifierseqContext.class,0);
 		}
@@ -13092,16 +13394,29 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitMemberdeclaration(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
+			isWrongWeak = false;
 			StringBuilder text = new StringBuilder();
 			++tabNum;
 			for (ParseTree child : this.children) {
 				text.append(child.getText());
 			}
 			--tabNum;
-			return tab + text.toString();
+			if (isWeak && !isWrongWeak && !text.toString().contains("~")) {
+				if (currentAccessSpecifier == null) {
+					weakClass.defaultFunction.append(tab + text.toString() + "\n");
+				} else if ("private".equals(currentAccessSpecifier)) {
+					weakClass.privateFunction.append(tab + text.toString() + "\n");
+					return tab + text.toString() +"\n";
+				} else if ("protected".equals(currentAccessSpecifier)) {
+					weakClass.protectedFunction.append(tab + text.toString() + "\n");
+				} else if ("public".equals(currentAccessSpecifier)) {
+					weakClass.publicFunction.append(tab + text.toString() + "\n");
+				}
+				return "";
+			}
+			return tab + text.toString() +"\n"; // TODO : How to treate variable ??
 		}
 	}
 
@@ -13139,7 +13454,7 @@ public class CPP14Parser extends Parser {
 				setState(2022);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignas) | (1L << Decltype) | (1L << Operator))) != 0) || ((((_la - 81)) & ~0x3f) == 0 && ((1L << (_la - 81)) & ((1L << (LeftParen - 81)) | (1L << (LeftBracket - 81)) | (1L << (Star - 81)) | (1L << (And - 81)) | (1L << (Tilde - 81)) | (1L << (AndAnd - 81)) | (1L << (Colon - 81)) | (1L << (Doublecolon - 81)) | (1L << (Ellipsis - 81)) | (1L << (Identifier - 81)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignas) | (1L << Decltype) | (1L << Operator))) != 0) || ((((_la - 83)) & ~0x3f) == 0 && ((1L << (_la - 83)) & ((1L << (LeftParen - 83)) | (1L << (LeftBracket - 83)) | (1L << (Star - 83)) | (1L << (And - 83)) | (1L << (Tilde - 83)) | (1L << (AndAnd - 83)) | (1L << (Colon - 83)) | (1L << (Doublecolon - 83)) | (1L << (Ellipsis - 83)) | (1L << (Identifier - 83)))) != 0)) {
 					{
 					setState(2021);
 					memberdeclaratorlist(0);
@@ -13212,6 +13527,7 @@ public class CPP14Parser extends Parser {
 		public MemberdeclaratorlistContext memberdeclaratorlist() {
 			return getRuleContext(MemberdeclaratorlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public MemberdeclaratorlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -13301,6 +13617,7 @@ public class CPP14Parser extends Parser {
 		public BraceorequalinitializerContext braceorequalinitializer() {
 			return getRuleContext(BraceorequalinitializerContext.class,0);
 		}
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
@@ -13602,6 +13919,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class BaseclauseContext extends ParserRuleContext {
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public BasespecifierlistContext basespecifierlist() {
 			return getRuleContext(BasespecifierlistContext.class,0);
 		}
@@ -13622,10 +13940,16 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitBaseclause(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
-			return ":" + basespecifierlist().getText();
+            String returnText = Colon().getText() + basespecifierlist().getText();
+			if (isWeak) {
+				weakClass = new WeakClass(((ClassheadContext)parent).classkey().getText());
+
+				weakClass.baseClause = returnText;
+				return Colon().getText() + " _" + currentClassName;
+			}
+			return returnText;
 		}
 	}
 
@@ -13656,9 +13980,11 @@ public class CPP14Parser extends Parser {
 		public BasespecifierContext basespecifier() {
 			return getRuleContext(BasespecifierContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public BasespecifierlistContext basespecifierlist() {
 			return getRuleContext(BasespecifierlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public BasespecifierlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -13676,7 +14002,6 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitBasespecifierlist(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			StringBuilder text = new StringBuilder();
@@ -13794,25 +14119,24 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitBasespecifier(this);
 			else return visitor.visitChildren(this);
 		}
-
 		@Override
 		public String getText() {
 			StringBuilder text = new StringBuilder();
 			if (Weak() != null) {
-				if (!weakClassMap.keySet().contains(basetypespecifier().classordecltype().classname().getText())) {
-					weakClassMap.put(basetypespecifier().classordecltype().classname().getText(), true);
-				}
-				for (ParseTree child : this.children) {
-					if (child.equals(basetypespecifier())) { // FIXME : nested specifier problem
-						text.append(" _" + child.getText());
-					} else if (!child.equals(Weak())) {
-						text.append(" " + child.getText());
-					}
-				}
-			} else {
-				for (ParseTree child : this.children) {
-					text.append(" " + child.getText());
-				}
+				isWeak = true;
+			}
+			for (ParseTree child : this.children) {
+				if (child != Weak()) {
+				    if (child != basetypespecifier() && isWeak) {
+				        String supClass = basetypespecifier().getText();
+				        if (Weak() != null)
+							superClassSet.add(supClass);
+				        if (classMap.get(supClass) != null) {
+                            superClassSet.addAll(classMap.get(supClass).superClassSet);
+                        }
+                    }
+                    text.append(" " + child.getText());
+                }
 			}
 			return text.toString();
 		}
@@ -14398,6 +14722,7 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class CtorinitializerContext extends ParserRuleContext {
+		public TerminalNode Colon() { return getToken(CPP14Parser.Colon, 0); }
 		public MeminitializerlistContext meminitializerlist() {
 			return getRuleContext(MeminitializerlistContext.class,0);
 		}
@@ -14447,6 +14772,8 @@ public class CPP14Parser extends Parser {
 		public MeminitializerContext meminitializer() {
 			return getRuleContext(MeminitializerContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public MeminitializerlistContext meminitializerlist() {
 			return getRuleContext(MeminitializerlistContext.class,0);
 		}
@@ -14532,6 +14859,8 @@ public class CPP14Parser extends Parser {
 		public MeminitializeridContext meminitializerid() {
 			return getRuleContext(MeminitializeridContext.class,0);
 		}
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public ExpressionlistContext expressionlist() {
 			return getRuleContext(ExpressionlistContext.class,0);
 		}
@@ -14575,7 +14904,7 @@ public class CPP14Parser extends Parser {
 				setState(2209);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << This))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)) | (1L << (Identifier - 65)))) != 0) || ((((_la - 129)) & ~0x3f) == 0 && ((1L << (_la - 129)) & ((1L << (Integerliteral - 129)) | (1L << (Characterliteral - 129)) | (1L << (Floatingliteral - 129)) | (1L << (Stringliteral - 129)) | (1L << (Userdefinedintegerliteral - 129)) | (1L << (Userdefinedfloatingliteral - 129)) | (1L << (Userdefinedstringliteral - 129)) | (1L << (Userdefinedcharacterliteral - 129)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (Throw - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (LeftBrace - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(2208);
 					expressionlist();
@@ -14779,9 +15108,11 @@ public class CPP14Parser extends Parser {
 
 	public static class TemplatedeclarationContext extends ParserRuleContext {
 		public TerminalNode Template() { return getToken(CPP14Parser.Template, 0); }
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
 		public TemplateparameterlistContext templateparameterlist() {
 			return getRuleContext(TemplateparameterlistContext.class,0);
 		}
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
 		public DeclarationContext declaration() {
 			return getRuleContext(DeclarationContext.class,0);
 		}
@@ -14802,6 +15133,8 @@ public class CPP14Parser extends Parser {
 			if ( visitor instanceof CPP14Visitor ) return ((CPP14Visitor<? extends T>)visitor).visitTemplatedeclaration(this);
 			else return visitor.visitChildren(this);
 		}
+
+
 	}
 
 	public final TemplatedeclarationContext templatedeclaration() throws RecognitionException {
@@ -14840,6 +15173,7 @@ public class CPP14Parser extends Parser {
 		public TemplateparameterlistContext templateparameterlist() {
 			return getRuleContext(TemplateparameterlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public TemplateparameterlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -14978,15 +15312,19 @@ public class CPP14Parser extends Parser {
 
 	public static class TypeparameterContext extends ParserRuleContext {
 		public TerminalNode Class() { return getToken(CPP14Parser.Class, 0); }
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public TerminalNode Identifier() { return getToken(CPP14Parser.Identifier, 0); }
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
 		public TerminalNode Typename() { return getToken(CPP14Parser.Typename, 0); }
 		public TerminalNode Template() { return getToken(CPP14Parser.Template, 0); }
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
 		public TemplateparameterlistContext templateparameterlist() {
 			return getRuleContext(TemplateparameterlistContext.class,0);
 		}
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
 		public IdexpressionContext idexpression() {
 			return getRuleContext(IdexpressionContext.class,0);
 		}
@@ -15194,6 +15532,8 @@ public class CPP14Parser extends Parser {
 		public TemplatenameContext templatename() {
 			return getRuleContext(TemplatenameContext.class,0);
 		}
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
 		public TemplateargumentlistContext templateargumentlist() {
 			return getRuleContext(TemplateargumentlistContext.class,0);
 		}
@@ -15230,7 +15570,7 @@ public class CPP14Parser extends Parser {
 			setState(2306);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << Struct) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Union - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Volatile - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << Struct))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Union - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Volatile - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 				{
 				setState(2305);
 				templateargumentlist(0);
@@ -15259,6 +15599,8 @@ public class CPP14Parser extends Parser {
 		public OperatorfunctionidContext operatorfunctionid() {
 			return getRuleContext(OperatorfunctionidContext.class,0);
 		}
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
 		public TemplateargumentlistContext templateargumentlist() {
 			return getRuleContext(TemplateargumentlistContext.class,0);
 		}
@@ -15309,7 +15651,7 @@ public class CPP14Parser extends Parser {
 				setState(2314);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << Struct) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Union - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Volatile - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << Struct))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Union - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Volatile - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(2313);
 					templateargumentlist(0);
@@ -15330,7 +15672,7 @@ public class CPP14Parser extends Parser {
 				setState(2321);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << Struct) | (1L << This))) != 0) || ((((_la - 66)) & ~0x3f) == 0 && ((1L << (_la - 66)) & ((1L << (True - 66)) | (1L << (Typeid - 66)) | (1L << (Typename - 66)) | (1L << (Union - 66)) | (1L << (Unsigned - 66)) | (1L << (Void - 66)) | (1L << (Volatile - 66)) | (1L << (Wchar - 66)) | (1L << (WStatic_cast - 66)) | (1L << (LeftParen - 66)) | (1L << (LeftBracket - 66)) | (1L << (Plus - 66)) | (1L << (Minus - 66)) | (1L << (Star - 66)) | (1L << (And - 66)) | (1L << (Or - 66)) | (1L << (Tilde - 66)) | (1L << (Not - 66)) | (1L << (PlusPlus - 66)) | (1L << (MinusMinus - 66)) | (1L << (Doublecolon - 66)) | (1L << (Identifier - 66)) | (1L << (Integerliteral - 66)))) != 0) || ((((_la - 135)) & ~0x3f) == 0 && ((1L << (_la - 135)) & ((1L << (Characterliteral - 135)) | (1L << (Floatingliteral - 135)) | (1L << (Stringliteral - 135)) | (1L << (Userdefinedintegerliteral - 135)) | (1L << (Userdefinedfloatingliteral - 135)) | (1L << (Userdefinedstringliteral - 135)) | (1L << (Userdefinedcharacterliteral - 135)))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Alignof) | (1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Const_cast) | (1L << Decltype) | (1L << Delete) | (1L << Double) | (1L << Dynamic_cast) | (1L << Enum) | (1L << False) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << New) | (1L << Noexcept) | (1L << Nullptr) | (1L << Nweak) | (1L << Operator) | (1L << Reinterpret_cast) | (1L << Short) | (1L << Signed) | (1L << Sizeof) | (1L << Static_cast) | (1L << Struct))) != 0) || ((((_la - 65)) & ~0x3f) == 0 && ((1L << (_la - 65)) & ((1L << (This - 65)) | (1L << (True - 65)) | (1L << (Typeid - 65)) | (1L << (Typename - 65)) | (1L << (Union - 65)) | (1L << (Unsigned - 65)) | (1L << (Void - 65)) | (1L << (Volatile - 65)) | (1L << (Wchar - 65)) | (1L << (WStatic_cast - 65)) | (1L << (LeftParen - 65)) | (1L << (LeftBracket - 65)) | (1L << (Plus - 65)) | (1L << (Minus - 65)) | (1L << (Star - 65)) | (1L << (And - 65)) | (1L << (Or - 65)) | (1L << (Tilde - 65)) | (1L << (Not - 65)) | (1L << (PlusPlus - 65)) | (1L << (MinusMinus - 65)) | (1L << (Doublecolon - 65)))) != 0) || ((((_la - 130)) & ~0x3f) == 0 && ((1L << (_la - 130)) & ((1L << (Identifier - 130)) | (1L << (Integerliteral - 130)) | (1L << (Characterliteral - 130)) | (1L << (Floatingliteral - 130)) | (1L << (Stringliteral - 130)) | (1L << (Userdefinedintegerliteral - 130)) | (1L << (Userdefinedfloatingliteral - 130)) | (1L << (Userdefinedstringliteral - 130)) | (1L << (Userdefinedcharacterliteral - 130)))) != 0)) {
 					{
 					setState(2320);
 					templateargumentlist(0);
@@ -15400,9 +15742,11 @@ public class CPP14Parser extends Parser {
 		public TemplateargumentContext templateargument() {
 			return getRuleContext(TemplateargumentContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public TemplateargumentlistContext templateargumentlist() {
 			return getRuleContext(TemplateargumentlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public TemplateargumentlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -15712,6 +16056,8 @@ public class CPP14Parser extends Parser {
 
 	public static class ExplicitspecializationContext extends ParserRuleContext {
 		public TerminalNode Template() { return getToken(CPP14Parser.Template, 0); }
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
 		public DeclarationContext declaration() {
 			return getRuleContext(DeclarationContext.class,0);
 		}
@@ -15938,9 +16284,11 @@ public class CPP14Parser extends Parser {
 
 	public static class HandlerContext extends ParserRuleContext {
 		public TerminalNode Catch() { return getToken(CPP14Parser.Catch, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ExceptiondeclarationContext exceptiondeclaration() {
 			return getRuleContext(ExceptiondeclarationContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public CompoundstatementContext compoundstatement() {
 			return getRuleContext(CompoundstatementContext.class,0);
 		}
@@ -16005,6 +16353,7 @@ public class CPP14Parser extends Parser {
 		public AbstractdeclaratorContext abstractdeclarator() {
 			return getRuleContext(AbstractdeclaratorContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public ExceptiondeclarationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -16069,7 +16418,7 @@ public class CPP14Parser extends Parser {
 				setState(2406);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if (_la==Decltype || ((((_la - 81)) & ~0x3f) == 0 && ((1L << (_la - 81)) & ((1L << (LeftParen - 81)) | (1L << (LeftBracket - 81)) | (1L << (Star - 81)) | (1L << (And - 81)) | (1L << (AndAnd - 81)) | (1L << (Doublecolon - 81)) | (1L << (Ellipsis - 81)) | (1L << (Identifier - 81)))) != 0)) {
+				if (_la==Decltype || ((((_la - 83)) & ~0x3f) == 0 && ((1L << (_la - 83)) & ((1L << (LeftParen - 83)) | (1L << (LeftBracket - 83)) | (1L << (Star - 83)) | (1L << (And - 83)) | (1L << (AndAnd - 83)) | (1L << (Doublecolon - 83)) | (1L << (Ellipsis - 83)) | (1L << (Identifier - 83)))) != 0)) {
 					{
 					setState(2405);
 					abstractdeclarator();
@@ -16217,6 +16566,8 @@ public class CPP14Parser extends Parser {
 
 	public static class DynamicexceptionspecificationContext extends ParserRuleContext {
 		public TerminalNode Throw() { return getToken(CPP14Parser.Throw, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public TypeidlistContext typeidlist() {
 			return getRuleContext(TypeidlistContext.class,0);
 		}
@@ -16253,7 +16604,7 @@ public class CPP14Parser extends Parser {
 			setState(2422);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Decltype) | (1L << Double) | (1L << Enum) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << Short) | (1L << Signed) | (1L << Struct))) != 0) || ((((_la - 70)) & ~0x3f) == 0 && ((1L << (_la - 70)) & ((1L << (Typename - 70)) | (1L << (Union - 70)) | (1L << (Unsigned - 70)) | (1L << (Void - 70)) | (1L << (Volatile - 70)) | (1L << (Wchar - 70)) | (1L << (Doublecolon - 70)) | (1L << (Identifier - 70)))) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << Auto) | (1L << Bool) | (1L << Char) | (1L << Char16) | (1L << Char32) | (1L << Class) | (1L << Const) | (1L << Decltype) | (1L << Double) | (1L << Enum) | (1L << Float) | (1L << Int) | (1L << Long) | (1L << Short) | (1L << Signed) | (1L << Struct))) != 0) || ((((_la - 72)) & ~0x3f) == 0 && ((1L << (_la - 72)) & ((1L << (Typename - 72)) | (1L << (Union - 72)) | (1L << (Unsigned - 72)) | (1L << (Void - 72)) | (1L << (Volatile - 72)) | (1L << (Wchar - 72)) | (1L << (Doublecolon - 72)) | (1L << (Identifier - 72)))) != 0)) {
 				{
 				setState(2421);
 				typeidlist(0);
@@ -16279,9 +16630,11 @@ public class CPP14Parser extends Parser {
 		public ThetypeidContext thetypeid() {
 			return getRuleContext(ThetypeidContext.class,0);
 		}
+		public TerminalNode Ellipsis() { return getToken(CPP14Parser.Ellipsis, 0); }
 		public TypeidlistContext typeidlist() {
 			return getRuleContext(TypeidlistContext.class,0);
 		}
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
 		public TypeidlistContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -16380,9 +16733,11 @@ public class CPP14Parser extends Parser {
 
 	public static class NoexceptspecificationContext extends ParserRuleContext {
 		public TerminalNode Noexcept() { return getToken(CPP14Parser.Noexcept, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
 		public ConstantexpressionContext constantexpression() {
 			return getRuleContext(ConstantexpressionContext.class,0);
 		}
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public NoexceptspecificationContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -16443,10 +16798,6 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class RightShiftContext extends ParserRuleContext {
-		public List<TerminalNode> Greater() { return getTokens(CPP14Parser.Greater); }
-		public TerminalNode Greater(int i) {
-			return getToken(CPP14Parser.Greater, i);
-		}
 		public RightShiftContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -16473,9 +16824,7 @@ public class CPP14Parser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(2450);
-			match(Greater);
-			setState(2451);
-			match(Greater);
+			match(T__0);
 			}
 		}
 		catch (RecognitionException re) {
@@ -16490,11 +16839,6 @@ public class CPP14Parser extends Parser {
 	}
 
 	public static class RightShiftAssignContext extends ParserRuleContext {
-		public List<TerminalNode> Greater() { return getTokens(CPP14Parser.Greater); }
-		public TerminalNode Greater(int i) {
-			return getToken(CPP14Parser.Greater, i);
-		}
-		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
 		public RightShiftAssignContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -16520,12 +16864,8 @@ public class CPP14Parser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(2453);
-			match(Greater);
-			setState(2454);
-			match(Greater);
-			setState(2455);
-			match(Assign);
+			setState(2452);
+			match(T__1);
 			}
 		}
 		catch (RecognitionException re) {
@@ -16542,12 +16882,50 @@ public class CPP14Parser extends Parser {
 	public static class TheoperatorContext extends ParserRuleContext {
 		public TerminalNode New() { return getToken(CPP14Parser.New, 0); }
 		public TerminalNode Delete() { return getToken(CPP14Parser.Delete, 0); }
+		public TerminalNode LeftBracket() { return getToken(CPP14Parser.LeftBracket, 0); }
+		public TerminalNode RightBracket() { return getToken(CPP14Parser.RightBracket, 0); }
+		public TerminalNode Plus() { return getToken(CPP14Parser.Plus, 0); }
+		public TerminalNode Minus() { return getToken(CPP14Parser.Minus, 0); }
+		public TerminalNode Star() { return getToken(CPP14Parser.Star, 0); }
+		public TerminalNode Div() { return getToken(CPP14Parser.Div, 0); }
+		public TerminalNode Mod() { return getToken(CPP14Parser.Mod, 0); }
+		public TerminalNode Caret() { return getToken(CPP14Parser.Caret, 0); }
+		public TerminalNode And() { return getToken(CPP14Parser.And, 0); }
+		public TerminalNode Or() { return getToken(CPP14Parser.Or, 0); }
+		public TerminalNode Tilde() { return getToken(CPP14Parser.Tilde, 0); }
+		public TerminalNode Not() { return getToken(CPP14Parser.Not, 0); }
+		public TerminalNode Assign() { return getToken(CPP14Parser.Assign, 0); }
+		public TerminalNode Less() { return getToken(CPP14Parser.Less, 0); }
+		public TerminalNode Greater() { return getToken(CPP14Parser.Greater, 0); }
+		public TerminalNode PlusAssign() { return getToken(CPP14Parser.PlusAssign, 0); }
+		public TerminalNode MinusAssign() { return getToken(CPP14Parser.MinusAssign, 0); }
+		public TerminalNode StarAssign() { return getToken(CPP14Parser.StarAssign, 0); }
+		public TerminalNode DivAssign() { return getToken(CPP14Parser.DivAssign, 0); }
+		public TerminalNode ModAssign() { return getToken(CPP14Parser.ModAssign, 0); }
+		public TerminalNode XorAssign() { return getToken(CPP14Parser.XorAssign, 0); }
+		public TerminalNode AndAssign() { return getToken(CPP14Parser.AndAssign, 0); }
+		public TerminalNode OrAssign() { return getToken(CPP14Parser.OrAssign, 0); }
+		public TerminalNode LeftShift() { return getToken(CPP14Parser.LeftShift, 0); }
 		public RightShiftContext rightShift() {
 			return getRuleContext(RightShiftContext.class,0);
 		}
 		public RightShiftAssignContext rightShiftAssign() {
 			return getRuleContext(RightShiftAssignContext.class,0);
 		}
+		public TerminalNode LeftShiftAssign() { return getToken(CPP14Parser.LeftShiftAssign, 0); }
+		public TerminalNode Equal() { return getToken(CPP14Parser.Equal, 0); }
+		public TerminalNode NotEqual() { return getToken(CPP14Parser.NotEqual, 0); }
+		public TerminalNode LessEqual() { return getToken(CPP14Parser.LessEqual, 0); }
+		public TerminalNode GreaterEqual() { return getToken(CPP14Parser.GreaterEqual, 0); }
+		public TerminalNode AndAnd() { return getToken(CPP14Parser.AndAnd, 0); }
+		public TerminalNode OrOr() { return getToken(CPP14Parser.OrOr, 0); }
+		public TerminalNode PlusPlus() { return getToken(CPP14Parser.PlusPlus, 0); }
+		public TerminalNode MinusMinus() { return getToken(CPP14Parser.MinusMinus, 0); }
+		public TerminalNode Comma() { return getToken(CPP14Parser.Comma, 0); }
+		public TerminalNode ArrowStar() { return getToken(CPP14Parser.ArrowStar, 0); }
+		public TerminalNode Arrow() { return getToken(CPP14Parser.Arrow, 0); }
+		public TerminalNode LeftParen() { return getToken(CPP14Parser.LeftParen, 0); }
+		public TerminalNode RightParen() { return getToken(CPP14Parser.RightParen, 0); }
 		public TheoperatorContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -16571,312 +16949,312 @@ public class CPP14Parser extends Parser {
 		TheoperatorContext _localctx = new TheoperatorContext(_ctx, getState());
 		enterRule(_localctx, 388, RULE_theoperator);
 		try {
-			setState(2505);
+			setState(2502);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,325,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(2457);
+				setState(2454);
 				match(New);
 				}
 				break;
 			case 2:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(2458);
+				setState(2455);
 				match(Delete);
 				}
 				break;
 			case 3:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(2459);
+				setState(2456);
 				match(New);
-				setState(2460);
+				setState(2457);
 				match(LeftBracket);
-				setState(2461);
+				setState(2458);
 				match(RightBracket);
 				}
 				break;
 			case 4:
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(2462);
+				setState(2459);
 				match(Delete);
-				setState(2463);
+				setState(2460);
 				match(LeftBracket);
-				setState(2464);
+				setState(2461);
 				match(RightBracket);
 				}
 				break;
 			case 5:
 				enterOuterAlt(_localctx, 5);
 				{
-				setState(2465);
+				setState(2462);
 				match(Plus);
 				}
 				break;
 			case 6:
 				enterOuterAlt(_localctx, 6);
 				{
-				setState(2466);
+				setState(2463);
 				match(Minus);
 				}
 				break;
 			case 7:
 				enterOuterAlt(_localctx, 7);
 				{
-				setState(2467);
+				setState(2464);
 				match(Star);
 				}
 				break;
 			case 8:
 				enterOuterAlt(_localctx, 8);
 				{
-				setState(2468);
+				setState(2465);
 				match(Div);
 				}
 				break;
 			case 9:
 				enterOuterAlt(_localctx, 9);
 				{
-				setState(2469);
+				setState(2466);
 				match(Mod);
 				}
 				break;
 			case 10:
 				enterOuterAlt(_localctx, 10);
 				{
-				setState(2470);
+				setState(2467);
 				match(Caret);
 				}
 				break;
 			case 11:
 				enterOuterAlt(_localctx, 11);
 				{
-				setState(2471);
+				setState(2468);
 				match(And);
 				}
 				break;
 			case 12:
 				enterOuterAlt(_localctx, 12);
 				{
-				setState(2472);
+				setState(2469);
 				match(Or);
 				}
 				break;
 			case 13:
 				enterOuterAlt(_localctx, 13);
 				{
-				setState(2473);
+				setState(2470);
 				match(Tilde);
 				}
 				break;
 			case 14:
 				enterOuterAlt(_localctx, 14);
 				{
-				setState(2474);
+				setState(2471);
 				match(Not);
 				}
 				break;
 			case 15:
 				enterOuterAlt(_localctx, 15);
 				{
-				setState(2475);
+				setState(2472);
 				match(Assign);
 				}
 				break;
 			case 16:
 				enterOuterAlt(_localctx, 16);
 				{
-				setState(2476);
+				setState(2473);
 				match(Less);
 				}
 				break;
 			case 17:
 				enterOuterAlt(_localctx, 17);
 				{
-				setState(2477);
+				setState(2474);
 				match(Greater);
 				}
 				break;
 			case 18:
 				enterOuterAlt(_localctx, 18);
 				{
-				setState(2478);
+				setState(2475);
 				match(PlusAssign);
 				}
 				break;
 			case 19:
 				enterOuterAlt(_localctx, 19);
 				{
-				setState(2479);
+				setState(2476);
 				match(MinusAssign);
 				}
 				break;
 			case 20:
 				enterOuterAlt(_localctx, 20);
 				{
-				setState(2480);
+				setState(2477);
 				match(StarAssign);
 				}
 				break;
 			case 21:
 				enterOuterAlt(_localctx, 21);
 				{
-				setState(2481);
+				setState(2478);
 				match(DivAssign);
 				}
 				break;
 			case 22:
 				enterOuterAlt(_localctx, 22);
 				{
-				setState(2482);
+				setState(2479);
 				match(ModAssign);
 				}
 				break;
 			case 23:
 				enterOuterAlt(_localctx, 23);
 				{
-				setState(2483);
+				setState(2480);
 				match(XorAssign);
 				}
 				break;
 			case 24:
 				enterOuterAlt(_localctx, 24);
 				{
-				setState(2484);
+				setState(2481);
 				match(AndAssign);
 				}
 				break;
 			case 25:
 				enterOuterAlt(_localctx, 25);
 				{
-				setState(2485);
+				setState(2482);
 				match(OrAssign);
 				}
 				break;
 			case 26:
 				enterOuterAlt(_localctx, 26);
 				{
-				setState(2486);
+				setState(2483);
 				match(LeftShift);
 				}
 				break;
 			case 27:
 				enterOuterAlt(_localctx, 27);
 				{
-				setState(2487);
+				setState(2484);
 				rightShift();
 				}
 				break;
 			case 28:
 				enterOuterAlt(_localctx, 28);
 				{
-				setState(2488);
+				setState(2485);
 				rightShiftAssign();
 				}
 				break;
 			case 29:
 				enterOuterAlt(_localctx, 29);
 				{
-				setState(2489);
+				setState(2486);
 				match(LeftShiftAssign);
 				}
 				break;
 			case 30:
 				enterOuterAlt(_localctx, 30);
 				{
-				setState(2490);
+				setState(2487);
 				match(Equal);
 				}
 				break;
 			case 31:
 				enterOuterAlt(_localctx, 31);
 				{
-				setState(2491);
+				setState(2488);
 				match(NotEqual);
 				}
 				break;
 			case 32:
 				enterOuterAlt(_localctx, 32);
 				{
-				setState(2492);
+				setState(2489);
 				match(LessEqual);
 				}
 				break;
 			case 33:
 				enterOuterAlt(_localctx, 33);
 				{
-				setState(2493);
+				setState(2490);
 				match(GreaterEqual);
 				}
 				break;
 			case 34:
 				enterOuterAlt(_localctx, 34);
 				{
-				setState(2494);
+				setState(2491);
 				match(AndAnd);
 				}
 				break;
 			case 35:
 				enterOuterAlt(_localctx, 35);
 				{
-				setState(2495);
+				setState(2492);
 				match(OrOr);
 				}
 				break;
 			case 36:
 				enterOuterAlt(_localctx, 36);
 				{
-				setState(2496);
+				setState(2493);
 				match(PlusPlus);
 				}
 				break;
 			case 37:
 				enterOuterAlt(_localctx, 37);
 				{
-				setState(2497);
+				setState(2494);
 				match(MinusMinus);
 				}
 				break;
 			case 38:
 				enterOuterAlt(_localctx, 38);
 				{
-				setState(2498);
+				setState(2495);
 				match(Comma);
 				}
 				break;
 			case 39:
 				enterOuterAlt(_localctx, 39);
 				{
-				setState(2499);
+				setState(2496);
 				match(ArrowStar);
 				}
 				break;
 			case 40:
 				enterOuterAlt(_localctx, 40);
 				{
-				setState(2500);
+				setState(2497);
 				match(Arrow);
 				}
 				break;
 			case 41:
 				enterOuterAlt(_localctx, 41);
 				{
-				setState(2501);
+				setState(2498);
 				match(LeftParen);
-				setState(2502);
+				setState(2499);
 				match(RightParen);
 				}
 				break;
 			case 42:
 				enterOuterAlt(_localctx, 42);
 				{
-				setState(2503);
+				setState(2500);
 				match(LeftBracket);
-				setState(2504);
+				setState(2501);
 				match(RightBracket);
 				}
 				break;
@@ -16930,34 +17308,34 @@ public class CPP14Parser extends Parser {
 		LiteralContext _localctx = new LiteralContext(_ctx, getState());
 		enterRule(_localctx, 390, RULE_literal);
 		try {
-			setState(2514);
+			setState(2511);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case Integerliteral:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(2507);
+				setState(2504);
 				match(Integerliteral);
 				}
 				break;
 			case Characterliteral:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(2508);
+				setState(2505);
 				match(Characterliteral);
 				}
 				break;
 			case Floatingliteral:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(2509);
+				setState(2506);
 				match(Floatingliteral);
 				}
 				break;
 			case Stringliteral:
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(2510);
+				setState(2507);
 				match(Stringliteral);
 				}
 				break;
@@ -16965,14 +17343,14 @@ public class CPP14Parser extends Parser {
 			case True:
 				enterOuterAlt(_localctx, 5);
 				{
-				setState(2511);
+				setState(2508);
 				booleanliteral();
 				}
 				break;
 			case Nullptr:
 				enterOuterAlt(_localctx, 6);
 				{
-				setState(2512);
+				setState(2509);
 				pointerliteral();
 				}
 				break;
@@ -16982,7 +17360,7 @@ public class CPP14Parser extends Parser {
 			case Userdefinedcharacterliteral:
 				enterOuterAlt(_localctx, 7);
 				{
-				setState(2513);
+				setState(2510);
 				userdefinedliteral();
 				}
 				break;
@@ -17030,7 +17408,7 @@ public class CPP14Parser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(2516);
+			setState(2513);
 			_la = _input.LA(1);
 			if ( !(_la==False || _la==True) ) {
 			_errHandler.recoverInline(this);
@@ -17080,7 +17458,7 @@ public class CPP14Parser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(2518);
+			setState(2515);
 			match(Nullptr);
 			}
 		}
@@ -17126,9 +17504,9 @@ public class CPP14Parser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(2520);
+			setState(2517);
 			_la = _input.LA(1);
-			if ( !(((((_la - 138)) & ~0x3f) == 0 && ((1L << (_la - 138)) & ((1L << (Userdefinedintegerliteral - 138)) | (1L << (Userdefinedfloatingliteral - 138)) | (1L << (Userdefinedstringliteral - 138)) | (1L << (Userdefinedcharacterliteral - 138)))) != 0)) ) {
+			if ( !(((((_la - 140)) & ~0x3f) == 0 && ((1L << (_la - 140)) & ((1L << (Userdefinedintegerliteral - 140)) | (1L << (Userdefinedfloatingliteral - 140)) | (1L << (Userdefinedstringliteral - 140)) | (1L << (Userdefinedcharacterliteral - 140)))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -17507,7 +17885,7 @@ public class CPP14Parser extends Parser {
 
 	private static final int _serializedATNSegments = 2;
 	private static final String _serializedATNSegment0 =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\u0093\u09dd\4\2\t"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\u0095\u09da\4\2\t"+
 		"\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13"+
 		"\t\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22"+
 		"\4\23\t\23\4\24\t\24\4\25\t\25\4\26\t\26\4\27\t\27\4\30\t\30\4\31\t\31"+
@@ -17718,287 +18096,287 @@ public class CPP14Parser extends Parser {
 		"\u00bf\3\u00c0\3\u00c0\3\u00c0\5\u00c0\u0980\n\u00c0\3\u00c0\3\u00c0\3"+
 		"\u00c0\3\u00c0\5\u00c0\u0986\n\u00c0\7\u00c0\u0988\n\u00c0\f\u00c0\16"+
 		"\u00c0\u098b\13\u00c0\3\u00c1\3\u00c1\3\u00c1\3\u00c1\3\u00c1\3\u00c1"+
-		"\5\u00c1\u0993\n\u00c1\3\u00c2\3\u00c2\3\u00c2\3\u00c3\3\u00c3\3\u00c3"+
-		"\3\u00c3\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4"+
+		"\5\u00c1\u0993\n\u00c1\3\u00c2\3\u00c2\3\u00c3\3\u00c3\3\u00c4\3\u00c4"+
 		"\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4"+
 		"\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4"+
 		"\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4"+
 		"\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4"+
-		"\3\u00c4\3\u00c4\3\u00c4\3\u00c4\5\u00c4\u09cc\n\u00c4\3\u00c5\3\u00c5"+
-		"\3\u00c5\3\u00c5\3\u00c5\3\u00c5\3\u00c5\5\u00c5\u09d5\n\u00c5\3\u00c6"+
-		"\3\u00c6\3\u00c7\3\u00c7\3\u00c8\3\u00c8\3\u00c8\2$\f\26 \62<>@BDFHJL"+
-		"NPXdv\u00ac\u00d0\u00d6\u00e2\u00e6\u00ee\u0104\u0108\u010c\u011a\u012e"+
-		"\u0132\u013a\u0158\u0164\u017e\u00c9\2\4\6\b\n\f\16\20\22\24\26\30\32"+
-		"\34\36 \"$&(*,.\60\62\64\668:<>@BDFHJLNPRTVXZ\\^`bdfhjlnprtvxz|~\u0080"+
-		"\u0082\u0084\u0086\u0088\u008a\u008c\u008e\u0090\u0092\u0094\u0096\u0098"+
-		"\u009a\u009c\u009e\u00a0\u00a2\u00a4\u00a6\u00a8\u00aa\u00ac\u00ae\u00b0"+
-		"\u00b2\u00b4\u00b6\u00b8\u00ba\u00bc\u00be\u00c0\u00c2\u00c4\u00c6\u00c8"+
-		"\u00ca\u00cc\u00ce\u00d0\u00d2\u00d4\u00d6\u00d8\u00da\u00dc\u00de\u00e0"+
-		"\u00e2\u00e4\u00e6\u00e8\u00ea\u00ec\u00ee\u00f0\u00f2\u00f4\u00f6\u00f8"+
-		"\u00fa\u00fc\u00fe\u0100\u0102\u0104\u0106\u0108\u010a\u010c\u010e\u0110"+
-		"\u0112\u0114\u0116\u0118\u011a\u011c\u011e\u0120\u0122\u0124\u0126\u0128"+
-		"\u012a\u012c\u012e\u0130\u0132\u0134\u0136\u0138\u013a\u013c\u013e\u0140"+
-		"\u0142\u0144\u0146\u0148\u014a\u014c\u014e\u0150\u0152\u0154\u0156\u0158"+
-		"\u015a\u015c\u015e\u0160\u0162\u0164\u0166\u0168\u016a\u016c\u016e\u0170"+
-		"\u0172\u0174\u0176\u0178\u017a\u017c\u017e\u0180\u0182\u0184\u0186\u0188"+
-		"\u018a\u018c\u018e\2\r\4\2__cc\4\2Y[_b\7\2\37\37**\65\65;;BB\5\2\35\35"+
-		"\'\'LL\4\2\21\21NN\4\2__tt\5\2\20\20>>II\4\2!!\61\61\3\2\62\64\4\2  D"+
-		"D\3\2\u008c\u008f\2\u0b10\2\u0191\3\2\2\2\4\u019d\3\2\2\2\6\u01a1\3\2"+
-		"\2\2\b\u01ac\3\2\2\2\n\u01ae\3\2\2\2\f\u01bf\3\2\2\2\16\u01d0\3\2\2\2"+
-		"\20\u01d6\3\2\2\2\22\u01e2\3\2\2\2\24\u01e4\3\2\2\2\26\u01e6\3\2\2\2\30"+
-		"\u01f8\3\2\2\2\32\u01fe\3\2\2\2\34\u0205\3\2\2\2\36\u0207\3\2\2\2 \u0260"+
-		"\3\2\2\2\"\u028d\3\2\2\2$\u02a5\3\2\2\2&\u02c3\3\2\2\2(\u02c5\3\2\2\2"+
-		"*\u02df\3\2\2\2,\u02e1\3\2\2\2.\u02e5\3\2\2\2\60\u02ee\3\2\2\2\62\u02f0"+
-		"\3\2\2\2\64\u0309\3\2\2\2\66\u0317\3\2\2\28\u0319\3\2\2\2:\u0324\3\2\2"+
-		"\2<\u0326\3\2\2\2>\u0334\3\2\2\2@\u0345\3\2\2\2B\u0353\3\2\2\2D\u0362"+
-		"\3\2\2\2F\u0376\3\2\2\2H\u0384\3\2\2\2J\u038f\3\2\2\2L\u039a\3\2\2\2N"+
-		"\u03a5\3\2\2\2P\u03b0\3\2\2\2R\u03c2\3\2\2\2T\u03ca\3\2\2\2V\u03d7\3\2"+
-		"\2\2X\u03d9\3\2\2\2Z\u03e4\3\2\2\2\\\u0400\3\2\2\2^\u0416\3\2\2\2`\u0419"+
-		"\3\2\2\2b\u041d\3\2\2\2d\u0423\3\2\2\2f\u0441\3\2\2\2h\u0453\3\2\2\2j"+
-		"\u0478\3\2\2\2l\u047c\3\2\2\2n\u047f\3\2\2\2p\u0486\3\2\2\2r\u0498\3\2"+
-		"\2\2t\u049a\3\2\2\2v\u049c\3\2\2\2x\u04af\3\2\2\2z\u04b9\3\2\2\2|\u04bb"+
-		"\3\2\2\2~\u04d2\3\2\2\2\u0080\u04d4\3\2\2\2\u0082\u04dc\3\2\2\2\u0084"+
-		"\u04de\3\2\2\2\u0086\u04e7\3\2\2\2\u0088\u04f0\3\2\2\2\u008a\u04f2\3\2"+
-		"\2\2\u008c\u04f4\3\2\2\2\u008e\u04f6\3\2\2\2\u0090\u04fb\3\2\2\2\u0092"+
-		"\u0501\3\2\2\2\u0094\u050a\3\2\2\2\u0096\u0513\3\2\2\2\u0098\u052c\3\2"+
-		"\2\2\u009a\u0532\3\2\2\2\u009c\u053d\3\2\2\2\u009e\u0557\3\2\2\2\u00a0"+
-		"\u0559\3\2\2\2\u00a2\u0568\3\2\2\2\u00a4\u057d\3\2\2\2\u00a6\u057f\3\2"+
-		"\2\2\u00a8\u058e\3\2\2\2\u00aa\u0590\3\2\2\2\u00ac\u0593\3\2\2\2\u00ae"+
-		"\u05a3\3\2\2\2\u00b0\u05a5\3\2\2\2\u00b2\u05a9\3\2\2\2\u00b4\u05ab\3\2"+
-		"\2\2\u00b6\u05af\3\2\2\2\u00b8\u05b3\3\2\2\2\u00ba\u05b6\3\2\2\2\u00bc"+
-		"\u05bf\3\2\2\2\u00be\u05c8\3\2\2\2\u00c0\u05d0\3\2\2\2\u00c2\u05d2\3\2"+
-		"\2\2\u00c4\u05d4\3\2\2\2\u00c6\u05db\3\2\2\2\u00c8\u05ec\3\2\2\2\u00ca"+
-		"\u05ef\3\2\2\2\u00cc\u05f9\3\2\2\2\u00ce\u0609\3\2\2\2\u00d0\u060b\3\2"+
-		"\2\2\u00d2\u061c\3\2\2\2\u00d4\u062e\3\2\2\2\u00d6\u0637\3\2\2\2\u00d8"+
-		"\u0648\3\2\2\2\u00da\u064e\3\2\2\2\u00dc\u0650\3\2\2\2\u00de\u0654\3\2"+
-		"\2\2\u00e0\u0656\3\2\2\2\u00e2\u065a\3\2\2\2\u00e4\u0671\3\2\2\2\u00e6"+
-		"\u0673\3\2\2\2\u00e8\u067e\3\2\2\2\u00ea\u0687\3\2\2\2\u00ec\u068d\3\2"+
-		"\2\2\u00ee\u0698\3\2\2\2\u00f0\u06aa\3\2\2\2\u00f2\u06b9\3\2\2\2\u00f4"+
-		"\u06d5\3\2\2\2\u00f6\u06d7\3\2\2\2\u00f8\u06db\3\2\2\2\u00fa\u06dd\3\2"+
-		"\2\2\u00fc\u06e0\3\2\2\2\u00fe\u06e4\3\2\2\2\u0100\u06f0\3\2\2\2\u0102"+
-		"\u06f7\3\2\2\2\u0104\u0707\3\2\2\2\u0106\u071d\3\2\2\2\u0108\u071f\3\2"+
-		"\2\2\u010a\u073c\3\2\2\2\u010c\u073e\3\2\2\2\u010e\u0768\3\2\2\2\u0110"+
-		"\u076b\3\2\2\2\u0112\u0781\3\2\2\2\u0114\u0788\3\2\2\2\u0116\u078d\3\2"+
-		"\2\2\u0118\u0791\3\2\2\2\u011a\u0793\3\2\2\2\u011c\u07ac\3\2\2\2\u011e"+
-		"\u07b0\3\2\2\2\u0120\u07b2\3\2\2\2\u0122\u07cb\3\2\2\2\u0124\u07ce\3\2"+
-		"\2\2\u0126\u07d2\3\2\2\2\u0128\u07d4\3\2\2\2\u012a\u07df\3\2\2\2\u012c"+
-		"\u07f1\3\2\2\2\u012e\u07f3\3\2\2\2\u0130\u0811\3\2\2\2\u0132\u0813\3\2"+
-		"\2\2\u0134\u081d\3\2\2\2\u0136\u081f\3\2\2\2\u0138\u0823\3\2\2\2\u013a"+
-		"\u0826\3\2\2\2\u013c\u0878\3\2\2\2\u013e\u087f\3\2\2\2\u0140\u0881\3\2"+
-		"\2\2\u0142\u0883\3\2\2\2\u0144\u0885\3\2\2\2\u0146\u0888\3\2\2\2\u0148"+
-		"\u088c\3\2\2\2\u014a\u0890\3\2\2\2\u014c\u089e\3\2\2\2\u014e\u08aa\3\2"+
-		"\2\2\u0150\u08ae\3\2\2\2\u0152\u08b0\3\2\2\2\u0154\u08b8\3\2\2\2\u0156"+
-		"\u08ba\3\2\2\2\u0158\u08c0\3\2\2\2\u015a\u08cd\3\2\2\2\u015c\u08ff\3\2"+
-		"\2\2\u015e\u0901\3\2\2\2\u0160\u0917\3\2\2\2\u0162\u0919\3\2\2\2\u0164"+
-		"\u091b\3\2\2\2\u0166\u092e\3\2\2\2\u0168\u093b\3\2\2\2\u016a\u093e\3\2"+
-		"\2\2\u016c\u0943\3\2\2\2\u016e\u0948\3\2\2\2\u0170\u094c\3\2\2\2\u0172"+
-		"\u0953\3\2\2\2\u0174\u0957\3\2\2\2\u0176\u096b\3\2\2\2\u0178\u096d\3\2"+
-		"\2\2\u017a\u0973\3\2\2\2\u017c\u0975\3\2\2\2\u017e\u097c\3\2\2\2\u0180"+
-		"\u0992\3\2\2\2\u0182\u0994\3\2\2\2\u0184\u0997\3\2\2\2\u0186\u09cb\3\2"+
-		"\2\2\u0188\u09d4\3\2\2\2\u018a\u09d6\3\2\2\2\u018c\u09d8\3\2\2\2\u018e"+
-		"\u09da\3\2\2\2\u0190\u0192\5v<\2\u0191\u0190\3\2\2\2\u0191\u0192\3\2\2"+
-		"\2\u0192\u0193\3\2\2\2\u0193\u0194\7\2\2\3\u0194\3\3\2\2\2\u0195\u019e"+
-		"\5\u0188\u00c5\2\u0196\u019e\7A\2\2\u0197\u0198\7S\2\2\u0198\u0199\5X"+
-		"-\2\u0199\u019a\7T\2\2\u019a\u019e\3\2\2\2\u019b\u019e\5\6\4\2\u019c\u019e"+
-		"\5\16\b\2\u019d\u0195\3\2\2\2\u019d\u0196\3\2\2\2\u019d\u0197\3\2\2\2"+
-		"\u019d\u019b\3\2\2\2\u019d\u019c\3\2\2\2\u019e\5\3\2\2\2\u019f\u01a2\5"+
-		"\b\5\2\u01a0\u01a2\5\n\6\2\u01a1\u019f\3\2\2\2\u01a1\u01a0\3\2\2\2\u01a2"+
-		"\7\3\2\2\2\u01a3\u01ad\7\u0082\2\2\u01a4\u01ad\5\u0152\u00aa\2\u01a5\u01ad"+
-		"\5\u0144\u00a3\2\u01a6\u01ad\5\u0154\u00ab\2\u01a7\u01a8\7a\2\2\u01a8"+
-		"\u01ad\5\u011e\u0090\2\u01a9\u01aa\7a\2\2\u01aa\u01ad\5\u009cO\2\u01ab"+
-		"\u01ad\5\u0160\u00b1\2\u01ac\u01a3\3\2\2\2\u01ac\u01a4\3\2\2\2\u01ac\u01a5"+
-		"\3\2\2\2\u01ac\u01a6\3\2\2\2\u01ac\u01a7\3\2\2\2\u01ac\u01a9\3\2\2\2\u01ac"+
-		"\u01ab\3\2\2\2\u01ad\t\3\2\2\2\u01ae\u01b0\5\f\7\2\u01af\u01b1\7@\2\2"+
-		"\u01b0\u01af\3\2\2\2\u01b0\u01b1\3\2\2\2\u01b1\u01b2\3\2\2\2\u01b2\u01b3"+
-		"\5\b\5\2\u01b3\13\3\2\2\2\u01b4\u01b5\b\7\1\2\u01b5\u01c0\7}\2\2\u01b6"+
-		"\u01b7\5\u009aN\2\u01b7\u01b8\7}\2\2\u01b8\u01c0\3\2\2\2\u01b9\u01ba\5"+
-		"\u00b2Z\2\u01ba\u01bb\7}\2\2\u01bb\u01c0\3\2\2\2\u01bc\u01bd\5\u009cO"+
-		"\2\u01bd\u01be\7}\2\2\u01be\u01c0\3\2\2\2\u01bf\u01b4\3\2\2\2\u01bf\u01b6"+
-		"\3\2\2\2\u01bf\u01b9\3\2\2\2\u01bf\u01bc\3\2\2\2\u01c0\u01cd\3\2\2\2\u01c1"+
-		"\u01c2\f\4\2\2\u01c2\u01c3\7\u0082\2\2\u01c3\u01cc\7}\2\2\u01c4\u01c6"+
-		"\f\3\2\2\u01c5\u01c7\7@\2\2\u01c6\u01c5\3\2\2\2\u01c6\u01c7\3\2\2\2\u01c7"+
-		"\u01c8\3\2\2\2\u01c8\u01c9\5\u015e\u00b0\2\u01c9\u01ca\7}\2\2\u01ca\u01cc"+
-		"\3\2\2\2\u01cb\u01c1\3\2\2\2\u01cb\u01c4\3\2\2\2\u01cc\u01cf\3\2\2\2\u01cd"+
-		"\u01cb\3\2\2\2\u01cd\u01ce\3\2\2\2\u01ce\r\3\2\2\2\u01cf\u01cd\3\2\2\2"+
-		"\u01d0\u01d2\5\20\t\2\u01d1\u01d3\5\36\20\2\u01d2\u01d1\3\2\2\2\u01d2"+
-		"\u01d3\3\2\2\2\u01d3\u01d4\3\2\2\2\u01d4\u01d5\5b\62\2\u01d5\17\3\2\2"+
-		"\2\u01d6\u01d8\7U\2\2\u01d7\u01d9\5\22\n\2\u01d8\u01d7\3\2\2\2\u01d8\u01d9"+
-		"\3\2\2\2\u01d9\u01da\3\2\2\2\u01da\u01db\7V\2\2\u01db\21\3\2\2\2\u01dc"+
-		"\u01e3\5\24\13\2\u01dd\u01e3\5\26\f\2\u01de\u01df\5\24\13\2\u01df\u01e0"+
-		"\7x\2\2\u01e0\u01e1\5\26\f\2\u01e1\u01e3\3\2\2\2\u01e2\u01dc\3\2\2\2\u01e2"+
-		"\u01dd\3\2\2\2\u01e2\u01de\3\2\2\2\u01e3\23\3\2\2\2\u01e4\u01e5\t\2\2"+
-		"\2\u01e5\25\3\2\2\2\u01e6\u01e7\b\f\1\2\u01e7\u01e9\5\30\r\2\u01e8\u01ea"+
-		"\7\u0081\2\2\u01e9\u01e8\3\2\2\2\u01e9\u01ea\3\2\2\2\u01ea\u01f3\3\2\2"+
-		"\2\u01eb\u01ec\f\3\2\2\u01ec\u01ed\7x\2\2\u01ed\u01ef\5\30\r\2\u01ee\u01f0"+
-		"\7\u0081\2\2\u01ef\u01ee\3\2\2\2\u01ef\u01f0\3\2\2\2\u01f0\u01f2\3\2\2"+
-		"\2\u01f1\u01eb\3\2\2\2\u01f2\u01f5\3\2\2\2\u01f3\u01f1\3\2\2\2\u01f3\u01f4"+
-		"\3\2\2\2\u01f4\27\3\2\2\2\u01f5\u01f3\3\2\2\2\u01f6\u01f9\5\32\16\2\u01f7"+
-		"\u01f9\5\34\17\2\u01f8\u01f6\3\2\2\2\u01f8\u01f7\3\2\2\2\u01f9\31\3\2"+
-		"\2\2\u01fa\u01ff\7\u0082\2\2\u01fb\u01fc\7_\2\2\u01fc\u01ff\7\u0082\2"+
-		"\2\u01fd\u01ff\7A\2\2\u01fe\u01fa\3\2\2\2\u01fe\u01fb\3\2\2\2\u01fe\u01fd"+
-		"\3\2\2\2\u01ff\33\3\2\2\2\u0200\u0201\7\u0082\2\2\u0201\u0206\5\u0114"+
-		"\u008b\2\u0202\u0203\7_\2\2\u0203\u0204\7\u0082\2\2\u0204\u0206\5\u0114"+
-		"\u008b\2\u0205\u0200\3\2\2\2\u0205\u0202\3\2\2\2\u0206\35\3\2\2\2\u0207"+
-		"\u0208\7S\2\2\u0208\u0209\5\u010a\u0086\2\u0209\u020b\7T\2\2\u020a\u020c"+
-		"\7*\2\2\u020b\u020a\3\2\2\2\u020b\u020c\3\2\2\2\u020c\u020e\3\2\2\2\u020d"+
-		"\u020f\5\u017a\u00be\2\u020e\u020d\3\2\2\2\u020e\u020f\3\2\2\2\u020f\u0211"+
-		"\3\2\2\2\u0210\u0212\5\u00d0i\2\u0211\u0210\3\2\2\2\u0211\u0212\3\2\2"+
-		"\2\u0212\u0214\3\2\2\2\u0213\u0215\5\u00f2z\2\u0214\u0213\3\2\2\2\u0214"+
-		"\u0215\3\2\2\2\u0215\37\3\2\2\2\u0216\u0217\b\21\1\2\u0217\u0261\5\4\3"+
-		"\2\u0218\u0219\5\u0098M\2\u0219\u021b\7S\2\2\u021a\u021c\5\"\22\2\u021b"+
-		"\u021a\3\2\2\2\u021b\u021c\3\2\2\2\u021c\u021d\3\2\2\2\u021d\u021e\7T"+
-		"\2\2\u021e\u0261\3\2\2\2\u021f\u0220\5\u0168\u00b5\2\u0220\u0222\7S\2"+
-		"\2\u0221\u0223\5\"\22\2\u0222\u0221\3\2\2\2\u0222\u0223\3\2\2\2\u0223"+
-		"\u0224\3\2\2\2\u0224\u0225\7T\2\2\u0225\u0261\3\2\2\2\u0226\u0227\5\u0098"+
-		"M\2\u0227\u0228\5\u011c\u008f\2\u0228\u0261\3\2\2\2\u0229\u022a\5\u0168"+
-		"\u00b5\2\u022a\u022b\5\u011c\u008f\2\u022b\u0261\3\2\2\2\u022c\u022d\7"+
-		"\32\2\2\u022d\u022e\7d\2\2\u022e\u022f\5\u00fe\u0080\2\u022f\u0230\7e"+
-		"\2\2\u0230\u0231\7S\2\2\u0231\u0232\5X-\2\u0232\u0233\7T\2\2\u0233\u0261"+
-		"\3\2\2\2\u0234\u0235\7=\2\2\u0235\u0236\7d\2\2\u0236\u0237\5\u00fe\u0080"+
-		"\2\u0237\u0238\7e\2\2\u0238\u0239\7S\2\2\u0239\u023a\5X-\2\u023a\u023b"+
-		"\7T\2\2\u023b\u0261\3\2\2\2\u023c\u023d\7R\2\2\u023d\u023e\7d\2\2\u023e"+
-		"\u023f\5\u00fe\u0080\2\u023f\u0240\7e\2\2\u0240\u0241\7S\2\2\u0241\u0242"+
-		"\5X-\2\u0242\u0243\7T\2\2\u0243\u0261\3\2\2\2\u0244\u0245\7\66\2\2\u0245"+
-		"\u0246\7d\2\2\u0246\u0247\5\u00fe\u0080\2\u0247\u0248\7e\2\2\u0248\u0249"+
-		"\7S\2\2\u0249\u024a\5X-\2\u024a\u024b\7T\2\2\u024b\u0261\3\2\2\2\u024c"+
-		"\u024d\7\23\2\2\u024d\u024e\7d\2\2\u024e\u024f\5\u00fe\u0080\2\u024f\u0250"+
-		"\7e\2\2\u0250\u0251\7S\2\2\u0251\u0252\5X-\2\u0252\u0253\7T\2\2\u0253"+
-		"\u0261\3\2\2\2\u0254\u0255\7G\2\2\u0255\u0256\7S\2\2\u0256\u0257\5X-\2"+
-		"\u0257\u0258\7T\2\2\u0258\u0261\3\2\2\2\u0259\u025a\7G\2\2\u025a\u025b"+
-		"\7S\2\2\u025b\u025c\5\u00fe\u0080\2\u025c\u025d\7T\2\2\u025d\u0261\3\2"+
-		"\2\2\u025e\u025f\7/\2\2\u025f\u0261\5 \21\3\u0260\u0216\3\2\2\2\u0260"+
-		"\u0218\3\2\2\2\u0260\u021f\3\2\2\2\u0260\u0226\3\2\2\2\u0260\u0229\3\2"+
-		"\2\2\u0260\u022c\3\2\2\2\u0260\u0234\3\2\2\2\u0260\u023c\3\2\2\2\u0260"+
-		"\u0244\3\2\2\2\u0260\u024c\3\2\2\2\u0260\u0254\3\2\2\2\u0260\u0259\3\2"+
-		"\2\2\u0260\u025e\3\2\2\2\u0261\u028a\3\2\2\2\u0262\u0263\f\27\2\2\u0263"+
-		"\u0264\7U\2\2\u0264\u0265\5X-\2\u0265\u0266\7V\2\2\u0266\u0289\3\2\2\2"+
-		"\u0267\u0268\f\26\2\2\u0268\u0269\7U\2\2\u0269\u026a\5\u011c\u008f\2\u026a"+
-		"\u026b\7V\2\2\u026b\u0289\3\2\2\2\u026c\u026d\f\25\2\2\u026d\u026f\7S"+
-		"\2\2\u026e\u0270\5\"\22\2\u026f\u026e\3\2\2\2\u026f\u0270\3\2\2\2\u0270"+
-		"\u0271\3\2\2\2\u0271\u0289\7T\2\2\u0272\u0273\f\20\2\2\u0273\u0275\7\177"+
-		"\2\2\u0274\u0276\7@\2\2\u0275\u0274\3\2\2\2\u0275\u0276\3\2\2\2\u0276"+
-		"\u0277\3\2\2\2\u0277\u0289\5\6\4\2\u0278\u0279\f\17\2\2\u0279\u027b\7"+
-		"z\2\2\u027a\u027c\7@\2\2\u027b\u027a\3\2\2\2\u027b\u027c\3\2\2\2\u027c"+
-		"\u027d\3\2\2\2\u027d\u0289\5\6\4\2\u027e\u027f\f\16\2\2\u027f\u0280\7"+
-		"\177\2\2\u0280\u0289\5$\23\2\u0281\u0282\f\r\2\2\u0282\u0283\7z\2\2\u0283"+
-		"\u0289\5$\23\2\u0284\u0285\f\f\2\2\u0285\u0289\7v\2\2\u0286\u0287\f\13"+
-		"\2\2\u0287\u0289\7w\2\2\u0288\u0262\3\2\2\2\u0288\u0267\3\2\2\2\u0288"+
-		"\u026c\3\2\2\2\u0288\u0272\3\2\2\2\u0288\u0278\3\2\2\2\u0288\u027e\3\2"+
-		"\2\2\u0288\u0281\3\2\2\2\u0288\u0284\3\2\2\2\u0288\u0286\3\2\2\2\u0289"+
-		"\u028c\3\2\2\2\u028a\u0288\3\2\2\2\u028a\u028b\3\2\2\2\u028b!\3\2\2\2"+
-		"\u028c\u028a\3\2\2\2\u028d\u028e\5\u011a\u008e\2\u028e#\3\2\2\2\u028f"+
-		"\u0291\5\f\7\2\u0290\u028f\3\2\2\2\u0290\u0291\3\2\2\2\u0291\u0292\3\2"+
-		"\2\2\u0292\u0293\5\u009aN\2\u0293\u0294\7}\2\2\u0294\u0295\7a\2\2\u0295"+
-		"\u0296\5\u009aN\2\u0296\u02a6\3\2\2\2\u0297\u0298\5\f\7\2\u0298\u0299"+
-		"\7@\2\2\u0299\u029a\5\u015e\u00b0\2\u029a\u029b\7}\2\2\u029b\u029c\7a"+
-		"\2\2\u029c\u029d\5\u009aN\2\u029d\u02a6\3\2\2\2\u029e\u02a0\5\f\7\2\u029f"+
-		"\u029e\3\2\2\2\u029f\u02a0\3\2\2\2\u02a0\u02a1\3\2\2\2\u02a1\u02a2\7a"+
-		"\2\2\u02a2\u02a6\5\u009aN\2\u02a3\u02a4\7a\2\2\u02a4\u02a6\5\u009cO\2"+
-		"\u02a5\u0290\3\2\2\2\u02a5\u0297\3\2\2\2\u02a5\u029f\3\2\2\2\u02a5\u02a3"+
-		"\3\2\2\2\u02a6%\3\2\2\2\u02a7\u02c4\5 \21\2\u02a8\u02a9\7v\2\2\u02a9\u02c4"+
-		"\5:\36\2\u02aa\u02ab\7w\2\2\u02ab\u02c4\5:\36\2\u02ac\u02ad\5(\25\2\u02ad"+
-		"\u02ae\5:\36\2\u02ae\u02c4\3\2\2\2\u02af\u02b0\7:\2\2\u02b0\u02c4\5&\24"+
-		"\2\u02b1\u02b2\7:\2\2\u02b2\u02b3\7S\2\2\u02b3\u02b4\5\u00fe\u0080\2\u02b4"+
-		"\u02b5\7T\2\2\u02b5\u02c4\3\2\2\2\u02b6\u02b7\7:\2\2\u02b7\u02b8\7\u0081"+
-		"\2\2\u02b8\u02b9\7S\2\2\u02b9\u02ba\7\u0082\2\2\u02ba\u02c4\7T\2\2\u02bb"+
-		"\u02bc\7\6\2\2\u02bc\u02bd\7S\2\2\u02bd\u02be\5\u00fe\u0080\2\u02be\u02bf"+
-		"\7T\2\2\u02bf\u02c4\3\2\2\2\u02c0\u02c4\58\35\2\u02c1\u02c4\5*\26\2\u02c2"+
-		"\u02c4\5\66\34\2\u02c3\u02a7\3\2\2\2\u02c3\u02a8\3\2\2\2\u02c3\u02aa\3"+
-		"\2\2\2\u02c3\u02ac\3\2\2\2\u02c3\u02af\3\2\2\2\u02c3\u02b1\3\2\2\2\u02c3"+
-		"\u02b6\3\2\2\2\u02c3\u02bb\3\2\2\2\u02c3\u02c0\3\2\2\2\u02c3\u02c1\3\2"+
-		"\2\2\u02c3\u02c2\3\2\2\2\u02c4\'\3\2\2\2\u02c5\u02c6\t\3\2\2\u02c6)\3"+
-		"\2\2\2\u02c7\u02c9\7}\2\2\u02c8\u02c7\3\2\2\2\u02c8\u02c9\3\2\2\2\u02c9"+
-		"\u02ca\3\2\2\2\u02ca\u02cc\7,\2\2\u02cb\u02cd\5,\27\2\u02cc\u02cb\3\2"+
-		"\2\2\u02cc\u02cd\3\2\2\2\u02cd\u02ce\3\2\2\2\u02ce\u02d0\5.\30\2\u02cf"+
-		"\u02d1\5\64\33\2\u02d0\u02cf\3\2\2\2\u02d0\u02d1\3\2\2\2\u02d1\u02e0\3"+
-		"\2\2\2\u02d2\u02d4\7}\2\2\u02d3\u02d2\3\2\2\2\u02d3\u02d4\3\2\2\2\u02d4"+
-		"\u02d5\3\2\2\2\u02d5\u02d7\7,\2\2\u02d6\u02d8\5,\27\2\u02d7\u02d6\3\2"+
-		"\2\2\u02d7\u02d8\3\2\2\2\u02d8\u02d9\3\2\2\2\u02d9\u02da\7S\2\2\u02da"+
-		"\u02db\5\u00fe\u0080\2\u02db\u02dd\7T\2\2\u02dc\u02de\5\64\33\2\u02dd"+
-		"\u02dc\3\2\2\2\u02dd\u02de\3\2\2\2\u02de\u02e0\3\2\2\2\u02df\u02c8\3\2"+
-		"\2\2\u02df\u02d3\3\2\2\2\u02e0+\3\2\2\2\u02e1\u02e2\7S\2\2\u02e2\u02e3"+
-		"\5\"\22\2\u02e3\u02e4\7T\2\2\u02e4-\3\2\2\2\u02e5\u02e7\5\u0094K\2\u02e6"+
-		"\u02e8\5\60\31\2\u02e7\u02e6\3\2\2\2\u02e7\u02e8\3\2\2\2\u02e8/\3\2\2"+
-		"\2\u02e9\u02eb\5\u00f4{\2\u02ea\u02ec\5\60\31\2\u02eb\u02ea\3\2\2\2\u02eb"+
-		"\u02ec\3\2\2\2\u02ec\u02ef\3\2\2\2\u02ed\u02ef\5\62\32\2\u02ee\u02e9\3"+
-		"\2\2\2\u02ee\u02ed\3\2\2\2\u02ef\61\3\2\2\2\u02f0\u02f1\b\32\1\2\u02f1"+
-		"\u02f2\7U\2\2\u02f2\u02f3\5X-\2\u02f3\u02f5\7V\2\2\u02f4\u02f6\5\u00d0"+
-		"i\2\u02f5\u02f4\3\2\2\2\u02f5\u02f6\3\2\2\2\u02f6\u0300\3\2\2\2\u02f7"+
-		"\u02f8\f\3\2\2\u02f8\u02f9\7U\2\2\u02f9\u02fa\5Z.\2\u02fa\u02fc\7V\2\2"+
-		"\u02fb\u02fd\5\u00d0i\2\u02fc\u02fb\3\2\2\2\u02fc\u02fd\3\2\2\2\u02fd"+
-		"\u02ff\3\2\2\2\u02fe\u02f7\3\2\2\2\u02ff\u0302\3\2\2\2\u0300\u02fe\3\2"+
-		"\2\2\u0300\u0301\3\2\2\2\u0301\63\3\2\2\2\u0302\u0300\3\2\2\2\u0303\u0305"+
-		"\7S\2\2\u0304\u0306\5\"\22\2\u0305\u0304\3\2\2\2\u0305\u0306\3\2\2\2\u0306"+
-		"\u0307\3\2\2\2\u0307\u030a\7T\2\2\u0308\u030a\5\u011c\u008f\2\u0309\u0303"+
-		"\3\2\2\2\u0309\u0308\3\2\2\2\u030a\65\3\2\2\2\u030b\u030d\7}\2\2\u030c"+
-		"\u030b\3\2\2\2\u030c\u030d\3\2\2\2\u030d\u030e\3\2\2\2\u030e\u030f\7\27"+
-		"\2\2\u030f\u0318\5:\36\2\u0310\u0312\7}\2\2\u0311\u0310\3\2\2\2\u0311"+
-		"\u0312\3\2\2\2\u0312\u0313\3\2\2\2\u0313\u0314\7\27\2\2\u0314\u0315\7"+
-		"U\2\2\u0315\u0316\7V\2\2\u0316\u0318\5:\36\2\u0317\u030c\3\2\2\2\u0317"+
-		"\u0311\3\2\2\2\u0318\67\3\2\2\2\u0319\u031a\7-\2\2\u031a\u031b\7S\2\2"+
-		"\u031b\u031c\5X-\2\u031c\u031d\7T\2\2\u031d9\3\2\2\2\u031e\u0325\5&\24"+
-		"\2\u031f\u0320\7S\2\2\u0320\u0321\5\u00fe\u0080\2\u0321\u0322\7T\2\2\u0322"+
-		"\u0323\5:\36\2\u0323\u0325\3\2\2\2\u0324\u031e\3\2\2\2\u0324\u031f\3\2"+
-		"\2\2\u0325;\3\2\2\2\u0326\u0327\b\37\1\2\u0327\u0328\5:\36\2\u0328\u0331"+
-		"\3\2\2\2\u0329\u032a\f\4\2\2\u032a\u032b\7\u0080\2\2\u032b\u0330\5:\36"+
-		"\2\u032c\u032d\f\3\2\2\u032d\u032e\7y\2\2\u032e\u0330\5:\36\2\u032f\u0329"+
-		"\3\2\2\2\u032f\u032c\3\2\2\2\u0330\u0333\3\2\2\2\u0331\u032f\3\2\2\2\u0331"+
+		"\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4\3\u00c4"+
+		"\3\u00c4\5\u00c4\u09c9\n\u00c4\3\u00c5\3\u00c5\3\u00c5\3\u00c5\3\u00c5"+
+		"\3\u00c5\3\u00c5\5\u00c5\u09d2\n\u00c5\3\u00c6\3\u00c6\3\u00c7\3\u00c7"+
+		"\3\u00c8\3\u00c8\3\u00c8\2$\f\26 \62<>@BDFHJLNPXdv\u00ac\u00d0\u00d6\u00e2"+
+		"\u00e6\u00ee\u0104\u0108\u010c\u011a\u012e\u0132\u013a\u0158\u0164\u017e"+
+		"\u00c9\2\4\6\b\n\f\16\20\22\24\26\30\32\34\36 \"$&(*,.\60\62\64\668:<"+
+		">@BDFHJLNPRTVXZ\\^`bdfhjlnprtvxz|~\u0080\u0082\u0084\u0086\u0088\u008a"+
+		"\u008c\u008e\u0090\u0092\u0094\u0096\u0098\u009a\u009c\u009e\u00a0\u00a2"+
+		"\u00a4\u00a6\u00a8\u00aa\u00ac\u00ae\u00b0\u00b2\u00b4\u00b6\u00b8\u00ba"+
+		"\u00bc\u00be\u00c0\u00c2\u00c4\u00c6\u00c8\u00ca\u00cc\u00ce\u00d0\u00d2"+
+		"\u00d4\u00d6\u00d8\u00da\u00dc\u00de\u00e0\u00e2\u00e4\u00e6\u00e8\u00ea"+
+		"\u00ec\u00ee\u00f0\u00f2\u00f4\u00f6\u00f8\u00fa\u00fc\u00fe\u0100\u0102"+
+		"\u0104\u0106\u0108\u010a\u010c\u010e\u0110\u0112\u0114\u0116\u0118\u011a"+
+		"\u011c\u011e\u0120\u0122\u0124\u0126\u0128\u012a\u012c\u012e\u0130\u0132"+
+		"\u0134\u0136\u0138\u013a\u013c\u013e\u0140\u0142\u0144\u0146\u0148\u014a"+
+		"\u014c\u014e\u0150\u0152\u0154\u0156\u0158\u015a\u015c\u015e\u0160\u0162"+
+		"\u0164\u0166\u0168\u016a\u016c\u016e\u0170\u0172\u0174\u0176\u0178\u017a"+
+		"\u017c\u017e\u0180\u0182\u0184\u0186\u0188\u018a\u018c\u018e\2\r\4\2a"+
+		"aee\4\2[]ad\7\2!!,,\67\67==DD\5\2\37\37))NN\4\2\23\23PP\4\2aavv\5\2\22"+
+		"\22@@KK\4\2##\63\63\3\2\64\66\4\2\"\"FF\3\2\u008e\u0091\2\u0b0d\2\u0191"+
+		"\3\2\2\2\4\u019d\3\2\2\2\6\u01a1\3\2\2\2\b\u01ac\3\2\2\2\n\u01ae\3\2\2"+
+		"\2\f\u01bf\3\2\2\2\16\u01d0\3\2\2\2\20\u01d6\3\2\2\2\22\u01e2\3\2\2\2"+
+		"\24\u01e4\3\2\2\2\26\u01e6\3\2\2\2\30\u01f8\3\2\2\2\32\u01fe\3\2\2\2\34"+
+		"\u0205\3\2\2\2\36\u0207\3\2\2\2 \u0260\3\2\2\2\"\u028d\3\2\2\2$\u02a5"+
+		"\3\2\2\2&\u02c3\3\2\2\2(\u02c5\3\2\2\2*\u02df\3\2\2\2,\u02e1\3\2\2\2."+
+		"\u02e5\3\2\2\2\60\u02ee\3\2\2\2\62\u02f0\3\2\2\2\64\u0309\3\2\2\2\66\u0317"+
+		"\3\2\2\28\u0319\3\2\2\2:\u0324\3\2\2\2<\u0326\3\2\2\2>\u0334\3\2\2\2@"+
+		"\u0345\3\2\2\2B\u0353\3\2\2\2D\u0362\3\2\2\2F\u0376\3\2\2\2H\u0384\3\2"+
+		"\2\2J\u038f\3\2\2\2L\u039a\3\2\2\2N\u03a5\3\2\2\2P\u03b0\3\2\2\2R\u03c2"+
+		"\3\2\2\2T\u03ca\3\2\2\2V\u03d7\3\2\2\2X\u03d9\3\2\2\2Z\u03e4\3\2\2\2\\"+
+		"\u0400\3\2\2\2^\u0416\3\2\2\2`\u0419\3\2\2\2b\u041d\3\2\2\2d\u0423\3\2"+
+		"\2\2f\u0441\3\2\2\2h\u0453\3\2\2\2j\u0478\3\2\2\2l\u047c\3\2\2\2n\u047f"+
+		"\3\2\2\2p\u0486\3\2\2\2r\u0498\3\2\2\2t\u049a\3\2\2\2v\u049c\3\2\2\2x"+
+		"\u04af\3\2\2\2z\u04b9\3\2\2\2|\u04bb\3\2\2\2~\u04d2\3\2\2\2\u0080\u04d4"+
+		"\3\2\2\2\u0082\u04dc\3\2\2\2\u0084\u04de\3\2\2\2\u0086\u04e7\3\2\2\2\u0088"+
+		"\u04f0\3\2\2\2\u008a\u04f2\3\2\2\2\u008c\u04f4\3\2\2\2\u008e\u04f6\3\2"+
+		"\2\2\u0090\u04fb\3\2\2\2\u0092\u0501\3\2\2\2\u0094\u050a\3\2\2\2\u0096"+
+		"\u0513\3\2\2\2\u0098\u052c\3\2\2\2\u009a\u0532\3\2\2\2\u009c\u053d\3\2"+
+		"\2\2\u009e\u0557\3\2\2\2\u00a0\u0559\3\2\2\2\u00a2\u0568\3\2\2\2\u00a4"+
+		"\u057d\3\2\2\2\u00a6\u057f\3\2\2\2\u00a8\u058e\3\2\2\2\u00aa\u0590\3\2"+
+		"\2\2\u00ac\u0593\3\2\2\2\u00ae\u05a3\3\2\2\2\u00b0\u05a5\3\2\2\2\u00b2"+
+		"\u05a9\3\2\2\2\u00b4\u05ab\3\2\2\2\u00b6\u05af\3\2\2\2\u00b8\u05b3\3\2"+
+		"\2\2\u00ba\u05b6\3\2\2\2\u00bc\u05bf\3\2\2\2\u00be\u05c8\3\2\2\2\u00c0"+
+		"\u05d0\3\2\2\2\u00c2\u05d2\3\2\2\2\u00c4\u05d4\3\2\2\2\u00c6\u05db\3\2"+
+		"\2\2\u00c8\u05ec\3\2\2\2\u00ca\u05ef\3\2\2\2\u00cc\u05f9\3\2\2\2\u00ce"+
+		"\u0609\3\2\2\2\u00d0\u060b\3\2\2\2\u00d2\u061c\3\2\2\2\u00d4\u062e\3\2"+
+		"\2\2\u00d6\u0637\3\2\2\2\u00d8\u0648\3\2\2\2\u00da\u064e\3\2\2\2\u00dc"+
+		"\u0650\3\2\2\2\u00de\u0654\3\2\2\2\u00e0\u0656\3\2\2\2\u00e2\u065a\3\2"+
+		"\2\2\u00e4\u0671\3\2\2\2\u00e6\u0673\3\2\2\2\u00e8\u067e\3\2\2\2\u00ea"+
+		"\u0687\3\2\2\2\u00ec\u068d\3\2\2\2\u00ee\u0698\3\2\2\2\u00f0\u06aa\3\2"+
+		"\2\2\u00f2\u06b9\3\2\2\2\u00f4\u06d5\3\2\2\2\u00f6\u06d7\3\2\2\2\u00f8"+
+		"\u06db\3\2\2\2\u00fa\u06dd\3\2\2\2\u00fc\u06e0\3\2\2\2\u00fe\u06e4\3\2"+
+		"\2\2\u0100\u06f0\3\2\2\2\u0102\u06f7\3\2\2\2\u0104\u0707\3\2\2\2\u0106"+
+		"\u071d\3\2\2\2\u0108\u071f\3\2\2\2\u010a\u073c\3\2\2\2\u010c\u073e\3\2"+
+		"\2\2\u010e\u0768\3\2\2\2\u0110\u076b\3\2\2\2\u0112\u0781\3\2\2\2\u0114"+
+		"\u0788\3\2\2\2\u0116\u078d\3\2\2\2\u0118\u0791\3\2\2\2\u011a\u0793\3\2"+
+		"\2\2\u011c\u07ac\3\2\2\2\u011e\u07b0\3\2\2\2\u0120\u07b2\3\2\2\2\u0122"+
+		"\u07cb\3\2\2\2\u0124\u07ce\3\2\2\2\u0126\u07d2\3\2\2\2\u0128\u07d4\3\2"+
+		"\2\2\u012a\u07df\3\2\2\2\u012c\u07f1\3\2\2\2\u012e\u07f3\3\2\2\2\u0130"+
+		"\u0811\3\2\2\2\u0132\u0813\3\2\2\2\u0134\u081d\3\2\2\2\u0136\u081f\3\2"+
+		"\2\2\u0138\u0823\3\2\2\2\u013a\u0826\3\2\2\2\u013c\u0878\3\2\2\2\u013e"+
+		"\u087f\3\2\2\2\u0140\u0881\3\2\2\2\u0142\u0883\3\2\2\2\u0144\u0885\3\2"+
+		"\2\2\u0146\u0888\3\2\2\2\u0148\u088c\3\2\2\2\u014a\u0890\3\2\2\2\u014c"+
+		"\u089e\3\2\2\2\u014e\u08aa\3\2\2\2\u0150\u08ae\3\2\2\2\u0152\u08b0\3\2"+
+		"\2\2\u0154\u08b8\3\2\2\2\u0156\u08ba\3\2\2\2\u0158\u08c0\3\2\2\2\u015a"+
+		"\u08cd\3\2\2\2\u015c\u08ff\3\2\2\2\u015e\u0901\3\2\2\2\u0160\u0917\3\2"+
+		"\2\2\u0162\u0919\3\2\2\2\u0164\u091b\3\2\2\2\u0166\u092e\3\2\2\2\u0168"+
+		"\u093b\3\2\2\2\u016a\u093e\3\2\2\2\u016c\u0943\3\2\2\2\u016e\u0948\3\2"+
+		"\2\2\u0170\u094c\3\2\2\2\u0172\u0953\3\2\2\2\u0174\u0957\3\2\2\2\u0176"+
+		"\u096b\3\2\2\2\u0178\u096d\3\2\2\2\u017a\u0973\3\2\2\2\u017c\u0975\3\2"+
+		"\2\2\u017e\u097c\3\2\2\2\u0180\u0992\3\2\2\2\u0182\u0994\3\2\2\2\u0184"+
+		"\u0996\3\2\2\2\u0186\u09c8\3\2\2\2\u0188\u09d1\3\2\2\2\u018a\u09d3\3\2"+
+		"\2\2\u018c\u09d5\3\2\2\2\u018e\u09d7\3\2\2\2\u0190\u0192\5v<\2\u0191\u0190"+
+		"\3\2\2\2\u0191\u0192\3\2\2\2\u0192\u0193\3\2\2\2\u0193\u0194\7\2\2\3\u0194"+
+		"\3\3\2\2\2\u0195\u019e\5\u0188\u00c5\2\u0196\u019e\7C\2\2\u0197\u0198"+
+		"\7U\2\2\u0198\u0199\5X-\2\u0199\u019a\7V\2\2\u019a\u019e\3\2\2\2\u019b"+
+		"\u019e\5\6\4\2\u019c\u019e\5\16\b\2\u019d\u0195\3\2\2\2\u019d\u0196\3"+
+		"\2\2\2\u019d\u0197\3\2\2\2\u019d\u019b\3\2\2\2\u019d\u019c\3\2\2\2\u019e"+
+		"\5\3\2\2\2\u019f\u01a2\5\b\5\2\u01a0\u01a2\5\n\6\2\u01a1\u019f\3\2\2\2"+
+		"\u01a1\u01a0\3\2\2\2\u01a2\7\3\2\2\2\u01a3\u01ad\7\u0084\2\2\u01a4\u01ad"+
+		"\5\u0152\u00aa\2\u01a5\u01ad\5\u0144\u00a3\2\u01a6\u01ad\5\u0154\u00ab"+
+		"\2\u01a7\u01a8\7c\2\2\u01a8\u01ad\5\u011e\u0090\2\u01a9\u01aa\7c\2\2\u01aa"+
+		"\u01ad\5\u009cO\2\u01ab\u01ad\5\u0160\u00b1\2\u01ac\u01a3\3\2\2\2\u01ac"+
+		"\u01a4\3\2\2\2\u01ac\u01a5\3\2\2\2\u01ac\u01a6\3\2\2\2\u01ac\u01a7\3\2"+
+		"\2\2\u01ac\u01a9\3\2\2\2\u01ac\u01ab\3\2\2\2\u01ad\t\3\2\2\2\u01ae\u01b0"+
+		"\5\f\7\2\u01af\u01b1\7B\2\2\u01b0\u01af\3\2\2\2\u01b0\u01b1\3\2\2\2\u01b1"+
+		"\u01b2\3\2\2\2\u01b2\u01b3\5\b\5\2\u01b3\13\3\2\2\2\u01b4\u01b5\b\7\1"+
+		"\2\u01b5\u01c0\7\177\2\2\u01b6\u01b7\5\u009aN\2\u01b7\u01b8\7\177\2\2"+
+		"\u01b8\u01c0\3\2\2\2\u01b9\u01ba\5\u00b2Z\2\u01ba\u01bb\7\177\2\2\u01bb"+
+		"\u01c0\3\2\2\2\u01bc\u01bd\5\u009cO\2\u01bd\u01be\7\177\2\2\u01be\u01c0"+
+		"\3\2\2\2\u01bf\u01b4\3\2\2\2\u01bf\u01b6\3\2\2\2\u01bf\u01b9\3\2\2\2\u01bf"+
+		"\u01bc\3\2\2\2\u01c0\u01cd\3\2\2\2\u01c1\u01c2\f\4\2\2\u01c2\u01c3\7\u0084"+
+		"\2\2\u01c3\u01cc\7\177\2\2\u01c4\u01c6\f\3\2\2\u01c5\u01c7\7B\2\2\u01c6"+
+		"\u01c5\3\2\2\2\u01c6\u01c7\3\2\2\2\u01c7\u01c8\3\2\2\2\u01c8\u01c9\5\u015e"+
+		"\u00b0\2\u01c9\u01ca\7\177\2\2\u01ca\u01cc\3\2\2\2\u01cb\u01c1\3\2\2\2"+
+		"\u01cb\u01c4\3\2\2\2\u01cc\u01cf\3\2\2\2\u01cd\u01cb\3\2\2\2\u01cd\u01ce"+
+		"\3\2\2\2\u01ce\r\3\2\2\2\u01cf\u01cd\3\2\2\2\u01d0\u01d2\5\20\t\2\u01d1"+
+		"\u01d3\5\36\20\2\u01d2\u01d1\3\2\2\2\u01d2\u01d3\3\2\2\2\u01d3\u01d4\3"+
+		"\2\2\2\u01d4\u01d5\5b\62\2\u01d5\17\3\2\2\2\u01d6\u01d8\7W\2\2\u01d7\u01d9"+
+		"\5\22\n\2\u01d8\u01d7\3\2\2\2\u01d8\u01d9\3\2\2\2\u01d9\u01da\3\2\2\2"+
+		"\u01da\u01db\7X\2\2\u01db\21\3\2\2\2\u01dc\u01e3\5\24\13\2\u01dd\u01e3"+
+		"\5\26\f\2\u01de\u01df\5\24\13\2\u01df\u01e0\7z\2\2\u01e0\u01e1\5\26\f"+
+		"\2\u01e1\u01e3\3\2\2\2\u01e2\u01dc\3\2\2\2\u01e2\u01dd\3\2\2\2\u01e2\u01de"+
+		"\3\2\2\2\u01e3\23\3\2\2\2\u01e4\u01e5\t\2\2\2\u01e5\25\3\2\2\2\u01e6\u01e7"+
+		"\b\f\1\2\u01e7\u01e9\5\30\r\2\u01e8\u01ea\7\u0083\2\2\u01e9\u01e8\3\2"+
+		"\2\2\u01e9\u01ea\3\2\2\2\u01ea\u01f3\3\2\2\2\u01eb\u01ec\f\3\2\2\u01ec"+
+		"\u01ed\7z\2\2\u01ed\u01ef\5\30\r\2\u01ee\u01f0\7\u0083\2\2\u01ef\u01ee"+
+		"\3\2\2\2\u01ef\u01f0\3\2\2\2\u01f0\u01f2\3\2\2\2\u01f1\u01eb\3\2\2\2\u01f2"+
+		"\u01f5\3\2\2\2\u01f3\u01f1\3\2\2\2\u01f3\u01f4\3\2\2\2\u01f4\27\3\2\2"+
+		"\2\u01f5\u01f3\3\2\2\2\u01f6\u01f9\5\32\16\2\u01f7\u01f9\5\34\17\2\u01f8"+
+		"\u01f6\3\2\2\2\u01f8\u01f7\3\2\2\2\u01f9\31\3\2\2\2\u01fa\u01ff\7\u0084"+
+		"\2\2\u01fb\u01fc\7a\2\2\u01fc\u01ff\7\u0084\2\2\u01fd\u01ff\7C\2\2\u01fe"+
+		"\u01fa\3\2\2\2\u01fe\u01fb\3\2\2\2\u01fe\u01fd\3\2\2\2\u01ff\33\3\2\2"+
+		"\2\u0200\u0201\7\u0084\2\2\u0201\u0206\5\u0114\u008b\2\u0202\u0203\7a"+
+		"\2\2\u0203\u0204\7\u0084\2\2\u0204\u0206\5\u0114\u008b\2\u0205\u0200\3"+
+		"\2\2\2\u0205\u0202\3\2\2\2\u0206\35\3\2\2\2\u0207\u0208\7U\2\2\u0208\u0209"+
+		"\5\u010a\u0086\2\u0209\u020b\7V\2\2\u020a\u020c\7,\2\2\u020b\u020a\3\2"+
+		"\2\2\u020b\u020c\3\2\2\2\u020c\u020e\3\2\2\2\u020d\u020f\5\u017a\u00be"+
+		"\2\u020e\u020d\3\2\2\2\u020e\u020f\3\2\2\2\u020f\u0211\3\2\2\2\u0210\u0212"+
+		"\5\u00d0i\2\u0211\u0210\3\2\2\2\u0211\u0212\3\2\2\2\u0212\u0214\3\2\2"+
+		"\2\u0213\u0215\5\u00f2z\2\u0214\u0213\3\2\2\2\u0214\u0215\3\2\2\2\u0215"+
+		"\37\3\2\2\2\u0216\u0217\b\21\1\2\u0217\u0261\5\4\3\2\u0218\u0219\5\u0098"+
+		"M\2\u0219\u021b\7U\2\2\u021a\u021c\5\"\22\2\u021b\u021a\3\2\2\2\u021b"+
+		"\u021c\3\2\2\2\u021c\u021d\3\2\2\2\u021d\u021e\7V\2\2\u021e\u0261\3\2"+
+		"\2\2\u021f\u0220\5\u0168\u00b5\2\u0220\u0222\7U\2\2\u0221\u0223\5\"\22"+
+		"\2\u0222\u0221\3\2\2\2\u0222\u0223\3\2\2\2\u0223\u0224\3\2\2\2\u0224\u0225"+
+		"\7V\2\2\u0225\u0261\3\2\2\2\u0226\u0227\5\u0098M\2\u0227\u0228\5\u011c"+
+		"\u008f\2\u0228\u0261\3\2\2\2\u0229\u022a\5\u0168\u00b5\2\u022a\u022b\5"+
+		"\u011c\u008f\2\u022b\u0261\3\2\2\2\u022c\u022d\7\34\2\2\u022d\u022e\7"+
+		"f\2\2\u022e\u022f\5\u00fe\u0080\2\u022f\u0230\7g\2\2\u0230\u0231\7U\2"+
+		"\2\u0231\u0232\5X-\2\u0232\u0233\7V\2\2\u0233\u0261\3\2\2\2\u0234\u0235"+
+		"\7?\2\2\u0235\u0236\7f\2\2\u0236\u0237\5\u00fe\u0080\2\u0237\u0238\7g"+
+		"\2\2\u0238\u0239\7U\2\2\u0239\u023a\5X-\2\u023a\u023b\7V\2\2\u023b\u0261"+
+		"\3\2\2\2\u023c\u023d\7T\2\2\u023d\u023e\7f\2\2\u023e\u023f\5\u00fe\u0080"+
+		"\2\u023f\u0240\7g\2\2\u0240\u0241\7U\2\2\u0241\u0242\5X-\2\u0242\u0243"+
+		"\7V\2\2\u0243\u0261\3\2\2\2\u0244\u0245\78\2\2\u0245\u0246\7f\2\2\u0246"+
+		"\u0247\5\u00fe\u0080\2\u0247\u0248\7g\2\2\u0248\u0249\7U\2\2\u0249\u024a"+
+		"\5X-\2\u024a\u024b\7V\2\2\u024b\u0261\3\2\2\2\u024c\u024d\7\25\2\2\u024d"+
+		"\u024e\7f\2\2\u024e\u024f\5\u00fe\u0080\2\u024f\u0250\7g\2\2\u0250\u0251"+
+		"\7U\2\2\u0251\u0252\5X-\2\u0252\u0253\7V\2\2\u0253\u0261\3\2\2\2\u0254"+
+		"\u0255\7I\2\2\u0255\u0256\7U\2\2\u0256\u0257\5X-\2\u0257\u0258\7V\2\2"+
+		"\u0258\u0261\3\2\2\2\u0259\u025a\7I\2\2\u025a\u025b\7U\2\2\u025b\u025c"+
+		"\5\u00fe\u0080\2\u025c\u025d\7V\2\2\u025d\u0261\3\2\2\2\u025e\u025f\7"+
+		"\61\2\2\u025f\u0261\5 \21\3\u0260\u0216\3\2\2\2\u0260\u0218\3\2\2\2\u0260"+
+		"\u021f\3\2\2\2\u0260\u0226\3\2\2\2\u0260\u0229\3\2\2\2\u0260\u022c\3\2"+
+		"\2\2\u0260\u0234\3\2\2\2\u0260\u023c\3\2\2\2\u0260\u0244\3\2\2\2\u0260"+
+		"\u024c\3\2\2\2\u0260\u0254\3\2\2\2\u0260\u0259\3\2\2\2\u0260\u025e\3\2"+
+		"\2\2\u0261\u028a\3\2\2\2\u0262\u0263\f\27\2\2\u0263\u0264\7W\2\2\u0264"+
+		"\u0265\5X-\2\u0265\u0266\7X\2\2\u0266\u0289\3\2\2\2\u0267\u0268\f\26\2"+
+		"\2\u0268\u0269\7W\2\2\u0269\u026a\5\u011c\u008f\2\u026a\u026b\7X\2\2\u026b"+
+		"\u0289\3\2\2\2\u026c\u026d\f\25\2\2\u026d\u026f\7U\2\2\u026e\u0270\5\""+
+		"\22\2\u026f\u026e\3\2\2\2\u026f\u0270\3\2\2\2\u0270\u0271\3\2\2\2\u0271"+
+		"\u0289\7V\2\2\u0272\u0273\f\20\2\2\u0273\u0275\7\u0081\2\2\u0274\u0276"+
+		"\7B\2\2\u0275\u0274\3\2\2\2\u0275\u0276\3\2\2\2\u0276\u0277\3\2\2\2\u0277"+
+		"\u0289\5\6\4\2\u0278\u0279\f\17\2\2\u0279\u027b\7|\2\2\u027a\u027c\7B"+
+		"\2\2\u027b\u027a\3\2\2\2\u027b\u027c\3\2\2\2\u027c\u027d\3\2\2\2\u027d"+
+		"\u0289\5\6\4\2\u027e\u027f\f\16\2\2\u027f\u0280\7\u0081\2\2\u0280\u0289"+
+		"\5$\23\2\u0281\u0282\f\r\2\2\u0282\u0283\7|\2\2\u0283\u0289\5$\23\2\u0284"+
+		"\u0285\f\f\2\2\u0285\u0289\7x\2\2\u0286\u0287\f\13\2\2\u0287\u0289\7y"+
+		"\2\2\u0288\u0262\3\2\2\2\u0288\u0267\3\2\2\2\u0288\u026c\3\2\2\2\u0288"+
+		"\u0272\3\2\2\2\u0288\u0278\3\2\2\2\u0288\u027e\3\2\2\2\u0288\u0281\3\2"+
+		"\2\2\u0288\u0284\3\2\2\2\u0288\u0286\3\2\2\2\u0289\u028c\3\2\2\2\u028a"+
+		"\u0288\3\2\2\2\u028a\u028b\3\2\2\2\u028b!\3\2\2\2\u028c\u028a\3\2\2\2"+
+		"\u028d\u028e\5\u011a\u008e\2\u028e#\3\2\2\2\u028f\u0291\5\f\7\2\u0290"+
+		"\u028f\3\2\2\2\u0290\u0291\3\2\2\2\u0291\u0292\3\2\2\2\u0292\u0293\5\u009a"+
+		"N\2\u0293\u0294\7\177\2\2\u0294\u0295\7c\2\2\u0295\u0296\5\u009aN\2\u0296"+
+		"\u02a6\3\2\2\2\u0297\u0298\5\f\7\2\u0298\u0299\7B\2\2\u0299\u029a\5\u015e"+
+		"\u00b0\2\u029a\u029b\7\177\2\2\u029b\u029c\7c\2\2\u029c\u029d\5\u009a"+
+		"N\2\u029d\u02a6\3\2\2\2\u029e\u02a0\5\f\7\2\u029f\u029e\3\2\2\2\u029f"+
+		"\u02a0\3\2\2\2\u02a0\u02a1\3\2\2\2\u02a1\u02a2\7c\2\2\u02a2\u02a6\5\u009a"+
+		"N\2\u02a3\u02a4\7c\2\2\u02a4\u02a6\5\u009cO\2\u02a5\u0290\3\2\2\2\u02a5"+
+		"\u0297\3\2\2\2\u02a5\u029f\3\2\2\2\u02a5\u02a3\3\2\2\2\u02a6%\3\2\2\2"+
+		"\u02a7\u02c4\5 \21\2\u02a8\u02a9\7x\2\2\u02a9\u02c4\5:\36\2\u02aa\u02ab"+
+		"\7y\2\2\u02ab\u02c4\5:\36\2\u02ac\u02ad\5(\25\2\u02ad\u02ae\5:\36\2\u02ae"+
+		"\u02c4\3\2\2\2\u02af\u02b0\7<\2\2\u02b0\u02c4\5&\24\2\u02b1\u02b2\7<\2"+
+		"\2\u02b2\u02b3\7U\2\2\u02b3\u02b4\5\u00fe\u0080\2\u02b4\u02b5\7V\2\2\u02b5"+
+		"\u02c4\3\2\2\2\u02b6\u02b7\7<\2\2\u02b7\u02b8\7\u0083\2\2\u02b8\u02b9"+
+		"\7U\2\2\u02b9\u02ba\7\u0084\2\2\u02ba\u02c4\7V\2\2\u02bb\u02bc\7\b\2\2"+
+		"\u02bc\u02bd\7U\2\2\u02bd\u02be\5\u00fe\u0080\2\u02be\u02bf\7V\2\2\u02bf"+
+		"\u02c4\3\2\2\2\u02c0\u02c4\58\35\2\u02c1\u02c4\5*\26\2\u02c2\u02c4\5\66"+
+		"\34\2\u02c3\u02a7\3\2\2\2\u02c3\u02a8\3\2\2\2\u02c3\u02aa\3\2\2\2\u02c3"+
+		"\u02ac\3\2\2\2\u02c3\u02af\3\2\2\2\u02c3\u02b1\3\2\2\2\u02c3\u02b6\3\2"+
+		"\2\2\u02c3\u02bb\3\2\2\2\u02c3\u02c0\3\2\2\2\u02c3\u02c1\3\2\2\2\u02c3"+
+		"\u02c2\3\2\2\2\u02c4\'\3\2\2\2\u02c5\u02c6\t\3\2\2\u02c6)\3\2\2\2\u02c7"+
+		"\u02c9\7\177\2\2\u02c8\u02c7\3\2\2\2\u02c8\u02c9\3\2\2\2\u02c9\u02ca\3"+
+		"\2\2\2\u02ca\u02cc\7.\2\2\u02cb\u02cd\5,\27\2\u02cc\u02cb\3\2\2\2\u02cc"+
+		"\u02cd\3\2\2\2\u02cd\u02ce\3\2\2\2\u02ce\u02d0\5.\30\2\u02cf\u02d1\5\64"+
+		"\33\2\u02d0\u02cf\3\2\2\2\u02d0\u02d1\3\2\2\2\u02d1\u02e0\3\2\2\2\u02d2"+
+		"\u02d4\7\177\2\2\u02d3\u02d2\3\2\2\2\u02d3\u02d4\3\2\2\2\u02d4\u02d5\3"+
+		"\2\2\2\u02d5\u02d7\7.\2\2\u02d6\u02d8\5,\27\2\u02d7\u02d6\3\2\2\2\u02d7"+
+		"\u02d8\3\2\2\2\u02d8\u02d9\3\2\2\2\u02d9\u02da\7U\2\2\u02da\u02db\5\u00fe"+
+		"\u0080\2\u02db\u02dd\7V\2\2\u02dc\u02de\5\64\33\2\u02dd\u02dc\3\2\2\2"+
+		"\u02dd\u02de\3\2\2\2\u02de\u02e0\3\2\2\2\u02df\u02c8\3\2\2\2\u02df\u02d3"+
+		"\3\2\2\2\u02e0+\3\2\2\2\u02e1\u02e2\7U\2\2\u02e2\u02e3\5\"\22\2\u02e3"+
+		"\u02e4\7V\2\2\u02e4-\3\2\2\2\u02e5\u02e7\5\u0094K\2\u02e6\u02e8\5\60\31"+
+		"\2\u02e7\u02e6\3\2\2\2\u02e7\u02e8\3\2\2\2\u02e8/\3\2\2\2\u02e9\u02eb"+
+		"\5\u00f4{\2\u02ea\u02ec\5\60\31\2\u02eb\u02ea\3\2\2\2\u02eb\u02ec\3\2"+
+		"\2\2\u02ec\u02ef\3\2\2\2\u02ed\u02ef\5\62\32\2\u02ee\u02e9\3\2\2\2\u02ee"+
+		"\u02ed\3\2\2\2\u02ef\61\3\2\2\2\u02f0\u02f1\b\32\1\2\u02f1\u02f2\7W\2"+
+		"\2\u02f2\u02f3\5X-\2\u02f3\u02f5\7X\2\2\u02f4\u02f6\5\u00d0i\2\u02f5\u02f4"+
+		"\3\2\2\2\u02f5\u02f6\3\2\2\2\u02f6\u0300\3\2\2\2\u02f7\u02f8\f\3\2\2\u02f8"+
+		"\u02f9\7W\2\2\u02f9\u02fa\5Z.\2\u02fa\u02fc\7X\2\2\u02fb\u02fd\5\u00d0"+
+		"i\2\u02fc\u02fb\3\2\2\2\u02fc\u02fd\3\2\2\2\u02fd\u02ff\3\2\2\2\u02fe"+
+		"\u02f7\3\2\2\2\u02ff\u0302\3\2\2\2\u0300\u02fe\3\2\2\2\u0300\u0301\3\2"+
+		"\2\2\u0301\63\3\2\2\2\u0302\u0300\3\2\2\2\u0303\u0305\7U\2\2\u0304\u0306"+
+		"\5\"\22\2\u0305\u0304\3\2\2\2\u0305\u0306\3\2\2\2\u0306\u0307\3\2\2\2"+
+		"\u0307\u030a\7V\2\2\u0308\u030a\5\u011c\u008f\2\u0309\u0303\3\2\2\2\u0309"+
+		"\u0308\3\2\2\2\u030a\65\3\2\2\2\u030b\u030d\7\177\2\2\u030c\u030b\3\2"+
+		"\2\2\u030c\u030d\3\2\2\2\u030d\u030e\3\2\2\2\u030e\u030f\7\31\2\2\u030f"+
+		"\u0318\5:\36\2\u0310\u0312\7\177\2\2\u0311\u0310\3\2\2\2\u0311\u0312\3"+
+		"\2\2\2\u0312\u0313\3\2\2\2\u0313\u0314\7\31\2\2\u0314\u0315\7W\2\2\u0315"+
+		"\u0316\7X\2\2\u0316\u0318\5:\36\2\u0317\u030c\3\2\2\2\u0317\u0311\3\2"+
+		"\2\2\u0318\67\3\2\2\2\u0319\u031a\7/\2\2\u031a\u031b\7U\2\2\u031b\u031c"+
+		"\5X-\2\u031c\u031d\7V\2\2\u031d9\3\2\2\2\u031e\u0325\5&\24\2\u031f\u0320"+
+		"\7U\2\2\u0320\u0321\5\u00fe\u0080\2\u0321\u0322\7V\2\2\u0322\u0323\5:"+
+		"\36\2\u0323\u0325\3\2\2\2\u0324\u031e\3\2\2\2\u0324\u031f\3\2\2\2\u0325"+
+		";\3\2\2\2\u0326\u0327\b\37\1\2\u0327\u0328\5:\36\2\u0328\u0331\3\2\2\2"+
+		"\u0329\u032a\f\4\2\2\u032a\u032b\7\u0082\2\2\u032b\u0330\5:\36\2\u032c"+
+		"\u032d\f\3\2\2\u032d\u032e\7{\2\2\u032e\u0330\5:\36\2\u032f\u0329\3\2"+
+		"\2\2\u032f\u032c\3\2\2\2\u0330\u0333\3\2\2\2\u0331\u032f\3\2\2\2\u0331"+
 		"\u0332\3\2\2\2\u0332=\3\2\2\2\u0333\u0331\3\2\2\2\u0334\u0335\b \1\2\u0335"+
-		"\u0336\5<\37\2\u0336\u0342\3\2\2\2\u0337\u0338\f\5\2\2\u0338\u0339\7["+
-		"\2\2\u0339\u0341\5<\37\2\u033a\u033b\f\4\2\2\u033b\u033c\7\\\2\2\u033c"+
-		"\u0341\5<\37\2\u033d\u033e\f\3\2\2\u033e\u033f\7]\2\2\u033f\u0341\5<\37"+
+		"\u0336\5<\37\2\u0336\u0342\3\2\2\2\u0337\u0338\f\5\2\2\u0338\u0339\7]"+
+		"\2\2\u0339\u0341\5<\37\2\u033a\u033b\f\4\2\2\u033b\u033c\7^\2\2\u033c"+
+		"\u0341\5<\37\2\u033d\u033e\f\3\2\2\u033e\u033f\7_\2\2\u033f\u0341\5<\37"+
 		"\2\u0340\u0337\3\2\2\2\u0340\u033a\3\2\2\2\u0340\u033d\3\2\2\2\u0341\u0344"+
 		"\3\2\2\2\u0342\u0340\3\2\2\2\u0342\u0343\3\2\2\2\u0343?\3\2\2\2\u0344"+
 		"\u0342\3\2\2\2\u0345\u0346\b!\1\2\u0346\u0347\5> \2\u0347\u0350\3\2\2"+
-		"\2\u0348\u0349\f\4\2\2\u0349\u034a\7Y\2\2\u034a\u034f\5> \2\u034b\u034c"+
-		"\f\3\2\2\u034c\u034d\7Z\2\2\u034d\u034f\5> \2\u034e\u0348\3\2\2\2\u034e"+
+		"\2\u0348\u0349\f\4\2\2\u0349\u034a\7[\2\2\u034a\u034f\5> \2\u034b\u034c"+
+		"\f\3\2\2\u034c\u034d\7\\\2\2\u034d\u034f\5> \2\u034e\u0348\3\2\2\2\u034e"+
 		"\u034b\3\2\2\2\u034f\u0352\3\2\2\2\u0350\u034e\3\2\2\2\u0350\u0351\3\2"+
 		"\2\2\u0351A\3\2\2\2\u0352\u0350\3\2\2\2\u0353\u0354\b\"\1\2\u0354\u0355"+
-		"\5@!\2\u0355\u035f\3\2\2\2\u0356\u0357\f\4\2\2\u0357\u0358\7n\2\2\u0358"+
+		"\5@!\2\u0355\u035f\3\2\2\2\u0356\u0357\f\4\2\2\u0357\u0358\7p\2\2\u0358"+
 		"\u035e\5@!\2\u0359\u035a\f\3\2\2\u035a\u035b\5\u0182\u00c2\2\u035b\u035c"+
 		"\5@!\2\u035c\u035e\3\2\2\2\u035d\u0356\3\2\2\2\u035d\u0359\3\2\2\2\u035e"+
 		"\u0361\3\2\2\2\u035f\u035d\3\2\2\2\u035f\u0360\3\2\2\2\u0360C\3\2\2\2"+
 		"\u0361\u035f\3\2\2\2\u0362\u0363\b#\1\2\u0363\u0364\5B\"\2\u0364\u0373"+
-		"\3\2\2\2\u0365\u0366\f\6\2\2\u0366\u0367\7d\2\2\u0367\u0372\5B\"\2\u0368"+
-		"\u0369\f\5\2\2\u0369\u036a\7e\2\2\u036a\u0372\5B\"\2\u036b\u036c\f\4\2"+
-		"\2\u036c\u036d\7r\2\2\u036d\u0372\5B\"\2\u036e\u036f\f\3\2\2\u036f\u0370"+
-		"\7s\2\2\u0370\u0372\5B\"\2\u0371\u0365\3\2\2\2\u0371\u0368\3\2\2\2\u0371"+
+		"\3\2\2\2\u0365\u0366\f\6\2\2\u0366\u0367\7f\2\2\u0367\u0372\5B\"\2\u0368"+
+		"\u0369\f\5\2\2\u0369\u036a\7g\2\2\u036a\u0372\5B\"\2\u036b\u036c\f\4\2"+
+		"\2\u036c\u036d\7t\2\2\u036d\u0372\5B\"\2\u036e\u036f\f\3\2\2\u036f\u0370"+
+		"\7u\2\2\u0370\u0372\5B\"\2\u0371\u0365\3\2\2\2\u0371\u0368\3\2\2\2\u0371"+
 		"\u036b\3\2\2\2\u0371\u036e\3\2\2\2\u0372\u0375\3\2\2\2\u0373\u0371\3\2"+
 		"\2\2\u0373\u0374\3\2\2\2\u0374E\3\2\2\2\u0375\u0373\3\2\2\2\u0376\u0377"+
 		"\b$\1\2\u0377\u0378\5D#\2\u0378\u0381\3\2\2\2\u0379\u037a\f\4\2\2\u037a"+
-		"\u037b\7p\2\2\u037b\u0380\5D#\2\u037c\u037d\f\3\2\2\u037d\u037e\7q\2\2"+
+		"\u037b\7r\2\2\u037b\u0380\5D#\2\u037c\u037d\f\3\2\2\u037d\u037e\7s\2\2"+
 		"\u037e\u0380\5D#\2\u037f\u0379\3\2\2\2\u037f\u037c\3\2\2\2\u0380\u0383"+
 		"\3\2\2\2\u0381\u037f\3\2\2\2\u0381\u0382\3\2\2\2\u0382G\3\2\2\2\u0383"+
 		"\u0381\3\2\2\2\u0384\u0385\b%\1\2\u0385\u0386\5F$\2\u0386\u038c\3\2\2"+
-		"\2\u0387\u0388\f\3\2\2\u0388\u0389\7_\2\2\u0389\u038b\5F$\2\u038a\u0387"+
+		"\2\u0387\u0388\f\3\2\2\u0388\u0389\7a\2\2\u0389\u038b\5F$\2\u038a\u0387"+
 		"\3\2\2\2\u038b\u038e\3\2\2\2\u038c\u038a\3\2\2\2\u038c\u038d\3\2\2\2\u038d"+
 		"I\3\2\2\2\u038e\u038c\3\2\2\2\u038f\u0390\b&\1\2\u0390\u0391\5H%\2\u0391"+
-		"\u0397\3\2\2\2\u0392\u0393\f\3\2\2\u0393\u0394\7^\2\2\u0394\u0396\5H%"+
+		"\u0397\3\2\2\2\u0392\u0393\f\3\2\2\u0393\u0394\7`\2\2\u0394\u0396\5H%"+
 		"\2\u0395\u0392\3\2\2\2\u0396\u0399\3\2\2\2\u0397\u0395\3\2\2\2\u0397\u0398"+
 		"\3\2\2\2\u0398K\3\2\2\2\u0399\u0397\3\2\2\2\u039a\u039b\b\'\1\2\u039b"+
-		"\u039c\5J&\2\u039c\u03a2\3\2\2\2\u039d\u039e\f\3\2\2\u039e\u039f\7`\2"+
+		"\u039c\5J&\2\u039c\u03a2\3\2\2\2\u039d\u039e\f\3\2\2\u039e\u039f\7b\2"+
 		"\2\u039f\u03a1\5J&\2\u03a0\u039d\3\2\2\2\u03a1\u03a4\3\2\2\2\u03a2\u03a0"+
 		"\3\2\2\2\u03a2\u03a3\3\2\2\2\u03a3M\3\2\2\2\u03a4\u03a2\3\2\2\2\u03a5"+
 		"\u03a6\b(\1\2\u03a6\u03a7\5L\'\2\u03a7\u03ad\3\2\2\2\u03a8\u03a9\f\3\2"+
-		"\2\u03a9\u03aa\7t\2\2\u03aa\u03ac\5L\'\2\u03ab\u03a8\3\2\2\2\u03ac\u03af"+
+		"\2\u03a9\u03aa\7v\2\2\u03aa\u03ac\5L\'\2\u03ab\u03a8\3\2\2\2\u03ac\u03af"+
 		"\3\2\2\2\u03ad\u03ab\3\2\2\2\u03ad\u03ae\3\2\2\2\u03aeO\3\2\2\2\u03af"+
 		"\u03ad\3\2\2\2\u03b0\u03b1\b)\1\2\u03b1\u03b2\5N(\2\u03b2\u03b8\3\2\2"+
-		"\2\u03b3\u03b4\f\3\2\2\u03b4\u03b5\7u\2\2\u03b5\u03b7\5N(\2\u03b6\u03b3"+
+		"\2\u03b3\u03b4\f\3\2\2\u03b4\u03b5\7w\2\2\u03b5\u03b7\5N(\2\u03b6\u03b3"+
 		"\3\2\2\2\u03b7\u03ba\3\2\2\2\u03b8\u03b6\3\2\2\2\u03b8\u03b9\3\2\2\2\u03b9"+
 		"Q\3\2\2\2\u03ba\u03b8\3\2\2\2\u03bb\u03c3\5P)\2\u03bc\u03bd\5P)\2\u03bd"+
-		"\u03be\7{\2\2\u03be\u03bf\5X-\2\u03bf\u03c0\7|\2\2\u03c0\u03c1\5T+\2\u03c1"+
+		"\u03be\7}\2\2\u03be\u03bf\5X-\2\u03bf\u03c0\7~\2\2\u03c0\u03c1\5T+\2\u03c1"+
 		"\u03c3\3\2\2\2\u03c2\u03bb\3\2\2\2\u03c2\u03bc\3\2\2\2\u03c3S\3\2\2\2"+
 		"\u03c4\u03cb\5R*\2\u03c5\u03c6\5P)\2\u03c6\u03c7\5V,\2\u03c7\u03c8\5\u0118"+
 		"\u008d\2\u03c8\u03cb\3\2\2\2\u03c9\u03cb\5\u0178\u00bd\2\u03ca\u03c4\3"+
 		"\2\2\2\u03ca\u03c5\3\2\2\2\u03ca\u03c9\3\2\2\2\u03cbU\3\2\2\2\u03cc\u03d8"+
-		"\7c\2\2\u03cd\u03d8\7h\2\2\u03ce\u03d8\7i\2\2\u03cf\u03d8\7j\2\2\u03d0"+
-		"\u03d8\7f\2\2\u03d1\u03d8\7g\2\2\u03d2\u03d8\5\u0184\u00c3\2\u03d3\u03d8"+
-		"\7o\2\2\u03d4\u03d8\7l\2\2\u03d5\u03d8\7k\2\2\u03d6\u03d8\7m\2\2\u03d7"+
+		"\7e\2\2\u03cd\u03d8\7j\2\2\u03ce\u03d8\7k\2\2\u03cf\u03d8\7l\2\2\u03d0"+
+		"\u03d8\7h\2\2\u03d1\u03d8\7i\2\2\u03d2\u03d8\5\u0184\u00c3\2\u03d3\u03d8"+
+		"\7q\2\2\u03d4\u03d8\7n\2\2\u03d5\u03d8\7m\2\2\u03d6\u03d8\7o\2\2\u03d7"+
 		"\u03cc\3\2\2\2\u03d7\u03cd\3\2\2\2\u03d7\u03ce\3\2\2\2\u03d7\u03cf\3\2"+
 		"\2\2\u03d7\u03d0\3\2\2\2\u03d7\u03d1\3\2\2\2\u03d7\u03d2\3\2\2\2\u03d7"+
 		"\u03d3\3\2\2\2\u03d7\u03d4\3\2\2\2\u03d7\u03d5\3\2\2\2\u03d7\u03d6\3\2"+
 		"\2\2\u03d8W\3\2\2\2\u03d9\u03da\b-\1\2\u03da\u03db\5T+\2\u03db\u03e1\3"+
-		"\2\2\2\u03dc\u03dd\f\3\2\2\u03dd\u03de\7x\2\2\u03de\u03e0\5T+\2\u03df"+
+		"\2\2\2\u03dc\u03dd\f\3\2\2\u03dd\u03de\7z\2\2\u03de\u03e0\5T+\2\u03df"+
 		"\u03dc\3\2\2\2\u03e0\u03e3\3\2\2\2\u03e1\u03df\3\2\2\2\u03e1\u03e2\3\2"+
 		"\2\2\u03e2Y\3\2\2\2\u03e3\u03e1\3\2\2\2\u03e4\u03e5\5R*\2\u03e5[\3\2\2"+
 		"\2\u03e6\u0401\5^\60\2\u03e7\u03e9\5\u00d0i\2\u03e8\u03e7\3\2\2\2\u03e8"+
@@ -18014,413 +18392,415 @@ public class CPP14Parser extends Parser {
 		"\u0400\u03ec\3\2\2\2\u0400\u03f0\3\2\2\2\u0400\u03f4\3\2\2\2\u0400\u03f8"+
 		"\3\2\2\2\u0400\u03fb\3\2\2\2\u0400\u03fd\3\2\2\2\u0401]\3\2\2\2\u0402"+
 		"\u0404\5\u00d0i\2\u0403\u0402\3\2\2\2\u0403\u0404\3\2\2\2\u0404\u0405"+
-		"\3\2\2\2\u0405\u0406\7\u0082\2\2\u0406\u0407\7|\2\2\u0407\u0417\5\\/\2"+
+		"\3\2\2\2\u0405\u0406\7\u0084\2\2\u0406\u0407\7~\2\2\u0407\u0417\5\\/\2"+
 		"\u0408\u040a\5\u00d0i\2\u0409\u0408\3\2\2\2\u0409\u040a\3\2\2\2\u040a"+
-		"\u040b\3\2\2\2\u040b\u040c\7\13\2\2\u040c\u040d\5Z.\2\u040d\u040e\7|\2"+
+		"\u040b\3\2\2\2\u040b\u040c\7\r\2\2\u040c\u040d\5Z.\2\u040d\u040e\7~\2"+
 		"\2\u040e\u040f\5\\/\2\u040f\u0417\3\2\2\2\u0410\u0412\5\u00d0i\2\u0411"+
-		"\u0410\3\2\2\2\u0411\u0412\3\2\2\2\u0412\u0413\3\2\2\2\u0413\u0414\7\26"+
-		"\2\2\u0414\u0415\7|\2\2\u0415\u0417\5\\/\2\u0416\u0403\3\2\2\2\u0416\u0409"+
+		"\u0410\3\2\2\2\u0411\u0412\3\2\2\2\u0412\u0413\3\2\2\2\u0413\u0414\7\30"+
+		"\2\2\u0414\u0415\7~\2\2\u0415\u0417\5\\/\2\u0416\u0403\3\2\2\2\u0416\u0409"+
 		"\3\2\2\2\u0416\u0411\3\2\2\2\u0417_\3\2\2\2\u0418\u041a\5X-\2\u0419\u0418"+
-		"\3\2\2\2\u0419\u041a\3\2\2\2\u041a\u041b\3\2\2\2\u041b\u041c\7~\2\2\u041c"+
-		"a\3\2\2\2\u041d\u041f\7W\2\2\u041e\u0420\5d\63\2\u041f\u041e\3\2\2\2\u041f"+
-		"\u0420\3\2\2\2\u0420\u0421\3\2\2\2\u0421\u0422\7X\2\2\u0422c\3\2\2\2\u0423"+
-		"\u0424\b\63\1\2\u0424\u0425\5\\/\2\u0425\u042a\3\2\2\2\u0426\u0427\f\3"+
-		"\2\2\u0427\u0429\5\\/\2\u0428\u0426\3\2\2\2\u0429\u042c\3\2\2\2\u042a"+
-		"\u0428\3\2\2\2\u042a\u042b\3\2\2\2\u042be\3\2\2\2\u042c\u042a\3\2\2\2"+
-		"\u042d\u042e\7&\2\2\u042e\u042f\7S\2\2\u042f\u0430\5h\65\2\u0430\u0431"+
-		"\7T\2\2\u0431\u0432\5\\/\2\u0432\u0442\3\2\2\2\u0433\u0434\7&\2\2\u0434"+
-		"\u0435\7S\2\2\u0435\u0436\5h\65\2\u0436\u0437\7T\2\2\u0437\u0438\5\\/"+
-		"\2\u0438\u0439\7\33\2\2\u0439\u043a\5\\/\2\u043a\u0442\3\2\2\2\u043b\u043c"+
-		"\7?\2\2\u043c\u043d\7S\2\2\u043d\u043e\5h\65\2\u043e\u043f\7T\2\2\u043f"+
-		"\u0440\5\\/\2\u0440\u0442\3\2\2\2\u0441\u042d\3\2\2\2\u0441\u0433\3\2"+
-		"\2\2\u0441\u043b\3\2\2\2\u0442g\3\2\2\2\u0443\u0454\5X-\2\u0444\u0446"+
-		"\5\u00d0i\2\u0445\u0444\3\2\2\2\u0445\u0446\3\2\2\2\u0446\u0447\3\2\2"+
-		"\2\u0447\u0448\5\u0088E\2\u0448\u0449\5\u00eav\2\u0449\u044a\7c\2\2\u044a"+
-		"\u044b\5\u0118\u008d\2\u044b\u0454\3\2\2\2\u044c\u044e\5\u00d0i\2\u044d"+
-		"\u044c\3\2\2\2\u044d\u044e\3\2\2\2\u044e\u044f\3\2\2\2\u044f\u0450\5\u0088"+
-		"E\2\u0450\u0451\5\u00eav\2\u0451\u0452\5\u011c\u008f\2\u0452\u0454\3\2"+
-		"\2\2\u0453\u0443\3\2\2\2\u0453\u0445\3\2\2\2\u0453\u044d\3\2\2\2\u0454"+
-		"i\3\2\2\2\u0455\u0456\7Q\2\2\u0456\u0457\7S\2\2\u0457\u0458\5h\65\2\u0458"+
-		"\u0459\7T\2\2\u0459\u045a\5\\/\2\u045a\u0479\3\2\2\2\u045b\u045c\7\30"+
-		"\2\2\u045c\u045d\5\\/\2\u045d\u045e\7Q\2\2\u045e\u045f\7S\2\2\u045f\u0460"+
-		"\5X-\2\u0460\u0461\7T\2\2\u0461\u0462\7~\2\2\u0462\u0479\3\2\2\2\u0463"+
-		"\u0464\7#\2\2\u0464\u0465\7S\2\2\u0465\u0467\5l\67\2\u0466\u0468\5h\65"+
-		"\2\u0467\u0466\3\2\2\2\u0467\u0468\3\2\2\2\u0468\u0469\3\2\2\2\u0469\u046b"+
-		"\7~\2\2\u046a\u046c\5X-\2\u046b\u046a\3\2\2\2\u046b\u046c\3\2\2\2\u046c"+
-		"\u046d\3\2\2\2\u046d\u046e\7T\2\2\u046e\u046f\5\\/\2\u046f\u0479\3\2\2"+
-		"\2\u0470\u0471\7#\2\2\u0471\u0472\7S\2\2\u0472\u0473\5n8\2\u0473\u0474"+
-		"\7|\2\2\u0474\u0475\5p9\2\u0475\u0476\7T\2\2\u0476\u0477\5\\/\2\u0477"+
-		"\u0479\3\2\2\2\u0478\u0455\3\2\2\2\u0478\u045b\3\2\2\2\u0478\u0463\3\2"+
-		"\2\2\u0478\u0470\3\2\2\2\u0479k\3\2\2\2\u047a\u047d\5`\61\2\u047b\u047d"+
-		"\5~@\2\u047c\u047a\3\2\2\2\u047c\u047b\3\2\2\2\u047dm\3\2\2\2\u047e\u0480"+
-		"\5\u00d0i\2\u047f\u047e\3\2\2\2\u047f\u0480\3\2\2\2\u0480\u0481\3\2\2"+
-		"\2\u0481\u0482\5\u0088E\2\u0482\u0483\5\u00eav\2\u0483o\3\2\2\2\u0484"+
-		"\u0487\5X-\2\u0485\u0487\5\u011c\u008f\2\u0486\u0484\3\2\2\2\u0486\u0485"+
-		"\3\2\2\2\u0487q\3\2\2\2\u0488\u0489\7\n\2\2\u0489\u0499\7~\2\2\u048a\u048b"+
-		"\7\24\2\2\u048b\u0499\7~\2\2\u048c\u048e\7\67\2\2\u048d\u048f\5X-\2\u048e"+
-		"\u048d\3\2\2\2\u048e\u048f\3\2\2\2\u048f\u0490\3\2\2\2\u0490\u0499\7~"+
-		"\2\2\u0491\u0492\7\67\2\2\u0492\u0493\5\u011c\u008f\2\u0493\u0494\7~\2"+
-		"\2\u0494\u0499\3\2\2\2\u0495\u0496\7%\2\2\u0496\u0497\7\u0082\2\2\u0497"+
-		"\u0499\7~\2\2\u0498\u0488\3\2\2\2\u0498\u048a\3\2\2\2\u0498\u048c\3\2"+
-		"\2\2\u0498\u0491\3\2\2\2\u0498\u0495\3\2\2\2\u0499s\3\2\2\2\u049a\u049b"+
-		"\5z>\2\u049bu\3\2\2\2\u049c\u049d\b<\1\2\u049d\u049e\5x=\2\u049e\u04a3"+
-		"\3\2\2\2\u049f\u04a0\f\3\2\2\u04a0\u04a2\5x=\2\u04a1\u049f\3\2\2\2\u04a2"+
-		"\u04a5\3\2\2\2\u04a3\u04a1\3\2\2\2\u04a3\u04a4\3\2\2\2\u04a4w\3\2\2\2"+
-		"\u04a5\u04a3\3\2\2\2\u04a6\u04b0\5z>\2\u04a7\u04b0\5\u0110\u0089\2\u04a8"+
-		"\u04b0\5\u0156\u00ac\2\u04a9\u04b0\5\u016a\u00b6\2\u04aa\u04b0\5\u016c"+
-		"\u00b7\2\u04ab\u04b0\5\u00ceh\2\u04ac\u04b0\5\u00b6\\\2\u04ad\u04b0\5"+
-		"\u0082B\2\u04ae\u04b0\5\u0084C\2\u04af\u04a6\3\2\2\2\u04af\u04a7\3\2\2"+
-		"\2\u04af\u04a8\3\2\2\2\u04af\u04a9\3\2\2\2\u04af\u04aa\3\2\2\2\u04af\u04ab"+
-		"\3\2\2\2\u04af\u04ac\3\2\2\2\u04af\u04ad\3\2\2\2\u04af\u04ae\3\2\2\2\u04b0"+
-		"y\3\2\2\2\u04b1\u04ba\5~@\2\u04b2\u04ba\5\u00ccg\2\u04b3\u04ba\5\u00c4"+
-		"c\2\u04b4\u04ba\5\u00c8e\2\u04b5\u04ba\5\u00caf\2\u04b6\u04ba\5\u0080"+
-		"A\2\u04b7\u04ba\5|?\2\u04b8\u04ba\5\u00a6T\2\u04b9\u04b1\3\2\2\2\u04b9"+
-		"\u04b2\3\2\2\2\u04b9\u04b3\3\2\2\2\u04b9\u04b4\3\2\2\2\u04b9\u04b5\3\2"+
-		"\2\2\u04b9\u04b6\3\2\2\2\u04b9\u04b7\3\2\2\2\u04b9\u04b8\3\2\2\2\u04ba"+
-		"{\3\2\2\2\u04bb\u04bc\7K\2\2\u04bc\u04be\7\u0082\2\2\u04bd\u04bf\5\u00d0"+
-		"i\2\u04be\u04bd\3\2\2\2\u04be\u04bf\3\2\2\2\u04bf\u04c0\3\2\2\2\u04c0"+
-		"\u04c1\7c\2\2\u04c1\u04c2\5\u00fe\u0080\2\u04c2\u04c3\7~\2\2\u04c3}\3"+
-		"\2\2\2\u04c4\u04c6\5\u0088E\2\u04c5\u04c4\3\2\2\2\u04c5\u04c6\3\2\2\2"+
-		"\u04c6\u04c8\3\2\2\2\u04c7\u04c9\5\u00e6t\2\u04c8\u04c7\3\2\2\2\u04c8"+
-		"\u04c9\3\2\2\2\u04c9\u04ca\3\2\2\2\u04ca\u04d3\7~\2\2\u04cb\u04cd\5\u00d0"+
-		"i\2\u04cc\u04ce\5\u0088E\2\u04cd\u04cc\3\2\2\2\u04cd\u04ce\3\2\2\2\u04ce"+
-		"\u04cf\3\2\2\2\u04cf\u04d0\5\u00e6t\2\u04d0\u04d1\7~\2\2\u04d1\u04d3\3"+
-		"\2\2\2\u04d2\u04c5\3\2\2\2\u04d2\u04cb\3\2\2\2\u04d3\177\3\2\2\2\u04d4"+
-		"\u04d5\7<\2\2\u04d5\u04d6\7S\2\2\u04d6\u04d7\5Z.\2\u04d7\u04d8\7x\2\2"+
-		"\u04d8\u04d9\7\u008b\2\2\u04d9\u04da\7T\2\2\u04da\u04db\7~\2\2\u04db\u0081"+
-		"\3\2\2\2\u04dc\u04dd\7~\2\2\u04dd\u0083\3\2\2\2\u04de\u04df\5\u00d0i\2"+
-		"\u04df\u04e0\7~\2\2\u04e0\u0085\3\2\2\2\u04e1\u04e8\5\u008aF\2\u04e2\u04e8"+
-		"\5\u0090I\2\u04e3\u04e8\5\u008cG\2\u04e4\u04e8\7$\2\2\u04e5\u04e8\7F\2"+
-		"\2\u04e6\u04e8\7\22\2\2\u04e7\u04e1\3\2\2\2\u04e7\u04e2\3\2\2\2\u04e7"+
-		"\u04e3\3\2\2\2\u04e7\u04e4\3\2\2\2\u04e7\u04e5\3\2\2\2\u04e7\u04e6\3\2"+
-		"\2\2\u04e8\u0087\3\2\2\2\u04e9\u04eb\5\u0086D\2\u04ea\u04ec\5\u00d0i\2"+
-		"\u04eb\u04ea\3\2\2\2\u04eb\u04ec\3\2\2\2\u04ec\u04f1\3\2\2\2\u04ed\u04ee"+
-		"\5\u0086D\2\u04ee\u04ef\5\u0088E\2\u04ef\u04f1\3\2\2\2\u04f0\u04e9\3\2"+
-		"\2\2\u04f0\u04ed\3\2\2\2\u04f1\u0089\3\2\2\2\u04f2\u04f3\t\4\2\2\u04f3"+
-		"\u008b\3\2\2\2\u04f4\u04f5\t\5\2\2\u04f5\u008d\3\2\2\2\u04f6\u04f7\7\u0082"+
-		"\2\2\u04f7\u008f\3\2\2\2\u04f8\u04fc\5\u0092J\2\u04f9\u04fc\5\u0120\u0091"+
-		"\2\u04fa\u04fc\5\u00a2R\2\u04fb\u04f8\3\2\2\2\u04fb\u04f9\3\2\2\2\u04fb"+
-		"\u04fa\3\2\2\2\u04fc\u0091\3\2\2\2\u04fd\u0502\5\u0098M\2\u04fe\u0502"+
-		"\5\u009eP\2\u04ff\u0502\5\u0168\u00b5\2\u0500\u0502\5\u00f8}\2\u0501\u04fd"+
-		"\3\2\2\2\u0501\u04fe\3\2\2\2\u0501\u04ff\3\2\2\2\u0501\u0500\3\2\2\2\u0502"+
-		"\u0093\3\2\2\2\u0503\u0505\5\u0090I\2\u0504\u0506\5\u00d0i\2\u0505\u0504"+
-		"\3\2\2\2\u0505\u0506\3\2\2\2\u0506\u050b\3\2\2\2\u0507\u0508\5\u0090I"+
-		"\2\u0508\u0509\5\u0094K\2\u0509\u050b\3\2\2\2\u050a\u0503\3\2\2\2\u050a"+
-		"\u0507\3\2\2\2\u050b\u0095\3\2\2\2\u050c\u050e\5\u0092J\2\u050d\u050f"+
-		"\5\u00d0i\2\u050e\u050d\3\2\2\2\u050e\u050f\3\2\2\2\u050f\u0514\3\2\2"+
-		"\2\u0510\u0511\5\u0092J\2\u0511\u0512\5\u0096L\2\u0512\u0514\3\2\2\2\u0513"+
-		"\u050c\3\2\2\2\u0513\u0510\3\2\2\2\u0514\u0097\3\2\2\2\u0515\u0517\5\f"+
-		"\7\2\u0516\u0515\3\2\2\2\u0516\u0517\3\2\2\2\u0517\u0518\3\2\2\2\u0518"+
-		"\u052d\5\u009aN\2\u0519\u051a\5\f\7\2\u051a\u051b\7@\2\2\u051b\u051c\5"+
-		"\u015e\u00b0\2\u051c\u052d\3\2\2\2\u051d\u052d\7\r\2\2\u051e\u052d\7\16"+
-		"\2\2\u051f\u052d\7\17\2\2\u0520\u052d\7O\2\2\u0521\u052d\7\t\2\2\u0522"+
-		"\u052d\78\2\2\u0523\u052d\7(\2\2\u0524\u052d\7)\2\2\u0525\u052d\79\2\2"+
-		"\u0526\u052d\7J\2\2\u0527\u052d\7\"\2\2\u0528\u052d\7\31\2\2\u0529\u052d"+
-		"\7M\2\2\u052a\u052d\7\b\2\2\u052b\u052d\5\u009cO\2\u052c\u0516\3\2\2\2"+
-		"\u052c\u0519\3\2\2\2\u052c\u051d\3\2\2\2\u052c\u051e\3\2\2\2\u052c\u051f"+
-		"\3\2\2\2\u052c\u0520\3\2\2\2\u052c\u0521\3\2\2\2\u052c\u0522\3\2\2\2\u052c"+
-		"\u0523\3\2\2\2\u052c\u0524\3\2\2\2\u052c\u0525\3\2\2\2\u052c\u0526\3\2"+
-		"\2\2\u052c\u0527\3\2\2\2\u052c\u0528\3\2\2\2\u052c\u0529\3\2\2\2\u052c"+
-		"\u052a\3\2\2\2\u052c\u052b\3\2\2\2\u052d\u0099\3\2\2\2\u052e\u0533\5\u011e"+
-		"\u0090\2\u052f\u0533\5\u00a0Q\2\u0530\u0533\5\u008eH\2\u0531\u0533\5\u015e"+
-		"\u00b0\2\u0532\u052e\3\2\2\2\u0532\u052f\3\2\2\2\u0532\u0530\3\2\2\2\u0532"+
-		"\u0531\3\2\2\2\u0533\u009b\3\2\2\2\u0534\u0535\7\25\2\2\u0535\u0536\7"+
-		"S\2\2\u0536\u0537\5X-\2\u0537\u0538\7T\2\2\u0538\u053e\3\2\2\2\u0539\u053a"+
-		"\7\25\2\2\u053a\u053b\7S\2\2\u053b\u053c\7\b\2\2\u053c\u053e\7T\2\2\u053d"+
-		"\u0534\3\2\2\2\u053d\u0539\3\2\2\2\u053e\u009d\3\2\2\2\u053f\u0541\5\u0128"+
-		"\u0095\2\u0540\u0542\5\u00d0i\2\u0541\u0540\3\2\2\2\u0541\u0542\3\2\2"+
-		"\2\u0542\u0544\3\2\2\2\u0543\u0545\5\f\7\2\u0544\u0543\3\2\2\2\u0544\u0545"+
-		"\3\2\2\2\u0545\u0546\3\2\2\2\u0546\u0547\7\u0082\2\2\u0547\u0558\3\2\2"+
-		"\2\u0548\u0549\5\u0128\u0095\2\u0549\u054a\5\u015e\u00b0\2\u054a\u0558"+
-		"\3\2\2\2\u054b\u054c\5\u0128\u0095\2\u054c\u054e\5\f\7\2\u054d\u054f\7"+
-		"@\2\2\u054e\u054d\3\2\2\2\u054e\u054f\3\2\2\2\u054f\u0550\3\2\2\2\u0550"+
-		"\u0551\5\u015e\u00b0\2\u0551\u0558\3\2\2\2\u0552\u0554\7\34\2\2\u0553"+
-		"\u0555\5\f\7\2\u0554\u0553\3\2\2\2\u0554\u0555\3\2\2\2\u0555\u0556\3\2"+
-		"\2\2\u0556\u0558\7\u0082\2\2\u0557\u053f\3\2\2\2\u0557\u0548\3\2\2\2\u0557"+
-		"\u054b\3\2\2\2\u0557\u0552\3\2\2\2\u0558\u009f\3\2\2\2\u0559\u055a\7\u0082"+
-		"\2\2\u055a\u00a1\3\2\2\2\u055b\u055c\5\u00a4S\2\u055c\u055e\7W\2\2\u055d"+
-		"\u055f\5\u00acW\2\u055e\u055d\3\2\2\2\u055e\u055f\3\2\2\2\u055f\u0560"+
-		"\3\2\2\2\u0560\u0561\7X\2\2\u0561\u0569\3\2\2\2\u0562\u0563\5\u00a4S\2"+
-		"\u0563\u0564\7W\2\2\u0564\u0565\5\u00acW\2\u0565\u0566\7x\2\2\u0566\u0567"+
-		"\7X\2\2\u0567\u0569\3\2\2\2\u0568\u055b\3\2\2\2\u0568\u0562\3\2\2\2\u0569"+
-		"\u00a3\3\2\2\2\u056a\u056c\5\u00a8U\2\u056b\u056d\5\u00d0i\2\u056c\u056b"+
-		"\3\2\2\2\u056c\u056d\3\2\2\2\u056d\u056f\3\2\2\2\u056e\u0570\7\u0082\2"+
-		"\2\u056f\u056e\3\2\2\2\u056f\u0570\3\2\2\2\u0570\u0572\3\2\2\2\u0571\u0573"+
-		"\5\u00aaV\2\u0572\u0571\3\2\2\2\u0572\u0573\3\2\2\2\u0573\u057e\3\2\2"+
-		"\2\u0574\u0576\5\u00a8U\2\u0575\u0577\5\u00d0i\2\u0576\u0575\3\2\2\2\u0576"+
-		"\u0577\3\2\2\2\u0577\u0578\3\2\2\2\u0578\u0579\5\f\7\2\u0579\u057b\7\u0082"+
-		"\2\2\u057a\u057c\5\u00aaV\2\u057b\u057a\3\2\2\2\u057b\u057c\3\2\2\2\u057c"+
+		"\3\2\2\2\u0419\u041a\3\2\2\2\u041a\u041b\3\2\2\2\u041b\u041c\7\u0080\2"+
+		"\2\u041ca\3\2\2\2\u041d\u041f\7Y\2\2\u041e\u0420\5d\63\2\u041f\u041e\3"+
+		"\2\2\2\u041f\u0420\3\2\2\2\u0420\u0421\3\2\2\2\u0421\u0422\7Z\2\2\u0422"+
+		"c\3\2\2\2\u0423\u0424\b\63\1\2\u0424\u0425\5\\/\2\u0425\u042a\3\2\2\2"+
+		"\u0426\u0427\f\3\2\2\u0427\u0429\5\\/\2\u0428\u0426\3\2\2\2\u0429\u042c"+
+		"\3\2\2\2\u042a\u0428\3\2\2\2\u042a\u042b\3\2\2\2\u042be\3\2\2\2\u042c"+
+		"\u042a\3\2\2\2\u042d\u042e\7(\2\2\u042e\u042f\7U\2\2\u042f\u0430\5h\65"+
+		"\2\u0430\u0431\7V\2\2\u0431\u0432\5\\/\2\u0432\u0442\3\2\2\2\u0433\u0434"+
+		"\7(\2\2\u0434\u0435\7U\2\2\u0435\u0436\5h\65\2\u0436\u0437\7V\2\2\u0437"+
+		"\u0438\5\\/\2\u0438\u0439\7\35\2\2\u0439\u043a\5\\/\2\u043a\u0442\3\2"+
+		"\2\2\u043b\u043c\7A\2\2\u043c\u043d\7U\2\2\u043d\u043e\5h\65\2\u043e\u043f"+
+		"\7V\2\2\u043f\u0440\5\\/\2\u0440\u0442\3\2\2\2\u0441\u042d\3\2\2\2\u0441"+
+		"\u0433\3\2\2\2\u0441\u043b\3\2\2\2\u0442g\3\2\2\2\u0443\u0454\5X-\2\u0444"+
+		"\u0446\5\u00d0i\2\u0445\u0444\3\2\2\2\u0445\u0446\3\2\2\2\u0446\u0447"+
+		"\3\2\2\2\u0447\u0448\5\u0088E\2\u0448\u0449\5\u00eav\2\u0449\u044a\7e"+
+		"\2\2\u044a\u044b\5\u0118\u008d\2\u044b\u0454\3\2\2\2\u044c\u044e\5\u00d0"+
+		"i\2\u044d\u044c\3\2\2\2\u044d\u044e\3\2\2\2\u044e\u044f\3\2\2\2\u044f"+
+		"\u0450\5\u0088E\2\u0450\u0451\5\u00eav\2\u0451\u0452\5\u011c\u008f\2\u0452"+
+		"\u0454\3\2\2\2\u0453\u0443\3\2\2\2\u0453\u0445\3\2\2\2\u0453\u044d\3\2"+
+		"\2\2\u0454i\3\2\2\2\u0455\u0456\7S\2\2\u0456\u0457\7U\2\2\u0457\u0458"+
+		"\5h\65\2\u0458\u0459\7V\2\2\u0459\u045a\5\\/\2\u045a\u0479\3\2\2\2\u045b"+
+		"\u045c\7\32\2\2\u045c\u045d\5\\/\2\u045d\u045e\7S\2\2\u045e\u045f\7U\2"+
+		"\2\u045f\u0460\5X-\2\u0460\u0461\7V\2\2\u0461\u0462\7\u0080\2\2\u0462"+
+		"\u0479\3\2\2\2\u0463\u0464\7%\2\2\u0464\u0465\7U\2\2\u0465\u0467\5l\67"+
+		"\2\u0466\u0468\5h\65\2\u0467\u0466\3\2\2\2\u0467\u0468\3\2\2\2\u0468\u0469"+
+		"\3\2\2\2\u0469\u046b\7\u0080\2\2\u046a\u046c\5X-\2\u046b\u046a\3\2\2\2"+
+		"\u046b\u046c\3\2\2\2\u046c\u046d\3\2\2\2\u046d\u046e\7V\2\2\u046e\u046f"+
+		"\5\\/\2\u046f\u0479\3\2\2\2\u0470\u0471\7%\2\2\u0471\u0472\7U\2\2\u0472"+
+		"\u0473\5n8\2\u0473\u0474\7~\2\2\u0474\u0475\5p9\2\u0475\u0476\7V\2\2\u0476"+
+		"\u0477\5\\/\2\u0477\u0479\3\2\2\2\u0478\u0455\3\2\2\2\u0478\u045b\3\2"+
+		"\2\2\u0478\u0463\3\2\2\2\u0478\u0470\3\2\2\2\u0479k\3\2\2\2\u047a\u047d"+
+		"\5`\61\2\u047b\u047d\5~@\2\u047c\u047a\3\2\2\2\u047c\u047b\3\2\2\2\u047d"+
+		"m\3\2\2\2\u047e\u0480\5\u00d0i\2\u047f\u047e\3\2\2\2\u047f\u0480\3\2\2"+
+		"\2\u0480\u0481\3\2\2\2\u0481\u0482\5\u0088E\2\u0482\u0483\5\u00eav\2\u0483"+
+		"o\3\2\2\2\u0484\u0487\5X-\2\u0485\u0487\5\u011c\u008f\2\u0486\u0484\3"+
+		"\2\2\2\u0486\u0485\3\2\2\2\u0487q\3\2\2\2\u0488\u0489\7\f\2\2\u0489\u0499"+
+		"\7\u0080\2\2\u048a\u048b\7\26\2\2\u048b\u0499\7\u0080\2\2\u048c\u048e"+
+		"\79\2\2\u048d\u048f\5X-\2\u048e\u048d\3\2\2\2\u048e\u048f\3\2\2\2\u048f"+
+		"\u0490\3\2\2\2\u0490\u0499\7\u0080\2\2\u0491\u0492\79\2\2\u0492\u0493"+
+		"\5\u011c\u008f\2\u0493\u0494\7\u0080\2\2\u0494\u0499\3\2\2\2\u0495\u0496"+
+		"\7\'\2\2\u0496\u0497\7\u0084\2\2\u0497\u0499\7\u0080\2\2\u0498\u0488\3"+
+		"\2\2\2\u0498\u048a\3\2\2\2\u0498\u048c\3\2\2\2\u0498\u0491\3\2\2\2\u0498"+
+		"\u0495\3\2\2\2\u0499s\3\2\2\2\u049a\u049b\5z>\2\u049bu\3\2\2\2\u049c\u049d"+
+		"\b<\1\2\u049d\u049e\5x=\2\u049e\u04a3\3\2\2\2\u049f\u04a0\f\3\2\2\u04a0"+
+		"\u04a2\5x=\2\u04a1\u049f\3\2\2\2\u04a2\u04a5\3\2\2\2\u04a3\u04a1\3\2\2"+
+		"\2\u04a3\u04a4\3\2\2\2\u04a4w\3\2\2\2\u04a5\u04a3\3\2\2\2\u04a6\u04b0"+
+		"\5z>\2\u04a7\u04b0\5\u0110\u0089\2\u04a8\u04b0\5\u0156\u00ac\2\u04a9\u04b0"+
+		"\5\u016a\u00b6\2\u04aa\u04b0\5\u016c\u00b7\2\u04ab\u04b0\5\u00ceh\2\u04ac"+
+		"\u04b0\5\u00b6\\\2\u04ad\u04b0\5\u0082B\2\u04ae\u04b0\5\u0084C\2\u04af"+
+		"\u04a6\3\2\2\2\u04af\u04a7\3\2\2\2\u04af\u04a8\3\2\2\2\u04af\u04a9\3\2"+
+		"\2\2\u04af\u04aa\3\2\2\2\u04af\u04ab\3\2\2\2\u04af\u04ac\3\2\2\2\u04af"+
+		"\u04ad\3\2\2\2\u04af\u04ae\3\2\2\2\u04b0y\3\2\2\2\u04b1\u04ba\5~@\2\u04b2"+
+		"\u04ba\5\u00ccg\2\u04b3\u04ba\5\u00c4c\2\u04b4\u04ba\5\u00c8e\2\u04b5"+
+		"\u04ba\5\u00caf\2\u04b6\u04ba\5\u0080A\2\u04b7\u04ba\5|?\2\u04b8\u04ba"+
+		"\5\u00a6T\2\u04b9\u04b1\3\2\2\2\u04b9\u04b2\3\2\2\2\u04b9\u04b3\3\2\2"+
+		"\2\u04b9\u04b4\3\2\2\2\u04b9\u04b5\3\2\2\2\u04b9\u04b6\3\2\2\2\u04b9\u04b7"+
+		"\3\2\2\2\u04b9\u04b8\3\2\2\2\u04ba{\3\2\2\2\u04bb\u04bc\7M\2\2\u04bc\u04be"+
+		"\7\u0084\2\2\u04bd\u04bf\5\u00d0i\2\u04be\u04bd\3\2\2\2\u04be\u04bf\3"+
+		"\2\2\2\u04bf\u04c0\3\2\2\2\u04c0\u04c1\7e\2\2\u04c1\u04c2\5\u00fe\u0080"+
+		"\2\u04c2\u04c3\7\u0080\2\2\u04c3}\3\2\2\2\u04c4\u04c6\5\u0088E\2\u04c5"+
+		"\u04c4\3\2\2\2\u04c5\u04c6\3\2\2\2\u04c6\u04c8\3\2\2\2\u04c7\u04c9\5\u00e6"+
+		"t\2\u04c8\u04c7\3\2\2\2\u04c8\u04c9\3\2\2\2\u04c9\u04ca\3\2\2\2\u04ca"+
+		"\u04d3\7\u0080\2\2\u04cb\u04cd\5\u00d0i\2\u04cc\u04ce\5\u0088E\2\u04cd"+
+		"\u04cc\3\2\2\2\u04cd\u04ce\3\2\2\2\u04ce\u04cf\3\2\2\2\u04cf\u04d0\5\u00e6"+
+		"t\2\u04d0\u04d1\7\u0080\2\2\u04d1\u04d3\3\2\2\2\u04d2\u04c5\3\2\2\2\u04d2"+
+		"\u04cb\3\2\2\2\u04d3\177\3\2\2\2\u04d4\u04d5\7>\2\2\u04d5\u04d6\7U\2\2"+
+		"\u04d6\u04d7\5Z.\2\u04d7\u04d8\7z\2\2\u04d8\u04d9\7\u008d\2\2\u04d9\u04da"+
+		"\7V\2\2\u04da\u04db\7\u0080\2\2\u04db\u0081\3\2\2\2\u04dc\u04dd\7\u0080"+
+		"\2\2\u04dd\u0083\3\2\2\2\u04de\u04df\5\u00d0i\2\u04df\u04e0\7\u0080\2"+
+		"\2\u04e0\u0085\3\2\2\2\u04e1\u04e8\5\u008aF\2\u04e2\u04e8\5\u0090I\2\u04e3"+
+		"\u04e8\5\u008cG\2\u04e4\u04e8\7&\2\2\u04e5\u04e8\7H\2\2\u04e6\u04e8\7"+
+		"\24\2\2\u04e7\u04e1\3\2\2\2\u04e7\u04e2\3\2\2\2\u04e7\u04e3\3\2\2\2\u04e7"+
+		"\u04e4\3\2\2\2\u04e7\u04e5\3\2\2\2\u04e7\u04e6\3\2\2\2\u04e8\u0087\3\2"+
+		"\2\2\u04e9\u04eb\5\u0086D\2\u04ea\u04ec\5\u00d0i\2\u04eb\u04ea\3\2\2\2"+
+		"\u04eb\u04ec\3\2\2\2\u04ec\u04f1\3\2\2\2\u04ed\u04ee\5\u0086D\2\u04ee"+
+		"\u04ef\5\u0088E\2\u04ef\u04f1\3\2\2\2\u04f0\u04e9\3\2\2\2\u04f0\u04ed"+
+		"\3\2\2\2\u04f1\u0089\3\2\2\2\u04f2\u04f3\t\4\2\2\u04f3\u008b\3\2\2\2\u04f4"+
+		"\u04f5\t\5\2\2\u04f5\u008d\3\2\2\2\u04f6\u04f7\7\u0084\2\2\u04f7\u008f"+
+		"\3\2\2\2\u04f8\u04fc\5\u0092J\2\u04f9\u04fc\5\u0120\u0091\2\u04fa\u04fc"+
+		"\5\u00a2R\2\u04fb\u04f8\3\2\2\2\u04fb\u04f9\3\2\2\2\u04fb\u04fa\3\2\2"+
+		"\2\u04fc\u0091\3\2\2\2\u04fd\u0502\5\u0098M\2\u04fe\u0502\5\u009eP\2\u04ff"+
+		"\u0502\5\u0168\u00b5\2\u0500\u0502\5\u00f8}\2\u0501\u04fd\3\2\2\2\u0501"+
+		"\u04fe\3\2\2\2\u0501\u04ff\3\2\2\2\u0501\u0500\3\2\2\2\u0502\u0093\3\2"+
+		"\2\2\u0503\u0505\5\u0090I\2\u0504\u0506\5\u00d0i\2\u0505\u0504\3\2\2\2"+
+		"\u0505\u0506\3\2\2\2\u0506\u050b\3\2\2\2\u0507\u0508\5\u0090I\2\u0508"+
+		"\u0509\5\u0094K\2\u0509\u050b\3\2\2\2\u050a\u0503\3\2\2\2\u050a\u0507"+
+		"\3\2\2\2\u050b\u0095\3\2\2\2\u050c\u050e\5\u0092J\2\u050d\u050f\5\u00d0"+
+		"i\2\u050e\u050d\3\2\2\2\u050e\u050f\3\2\2\2\u050f\u0514\3\2\2\2\u0510"+
+		"\u0511\5\u0092J\2\u0511\u0512\5\u0096L\2\u0512\u0514\3\2\2\2\u0513\u050c"+
+		"\3\2\2\2\u0513\u0510\3\2\2\2\u0514\u0097\3\2\2\2\u0515\u0517\5\f\7\2\u0516"+
+		"\u0515\3\2\2\2\u0516\u0517\3\2\2\2\u0517\u0518\3\2\2\2\u0518\u052d\5\u009a"+
+		"N\2\u0519\u051a\5\f\7\2\u051a\u051b\7B\2\2\u051b\u051c\5\u015e\u00b0\2"+
+		"\u051c\u052d\3\2\2\2\u051d\u052d\7\17\2\2\u051e\u052d\7\20\2\2\u051f\u052d"+
+		"\7\21\2\2\u0520\u052d\7Q\2\2\u0521\u052d\7\13\2\2\u0522\u052d\7:\2\2\u0523"+
+		"\u052d\7*\2\2\u0524\u052d\7+\2\2\u0525\u052d\7;\2\2\u0526\u052d\7L\2\2"+
+		"\u0527\u052d\7$\2\2\u0528\u052d\7\33\2\2\u0529\u052d\7O\2\2\u052a\u052d"+
+		"\7\n\2\2\u052b\u052d\5\u009cO\2\u052c\u0516\3\2\2\2\u052c\u0519\3\2\2"+
+		"\2\u052c\u051d\3\2\2\2\u052c\u051e\3\2\2\2\u052c\u051f\3\2\2\2\u052c\u0520"+
+		"\3\2\2\2\u052c\u0521\3\2\2\2\u052c\u0522\3\2\2\2\u052c\u0523\3\2\2\2\u052c"+
+		"\u0524\3\2\2\2\u052c\u0525\3\2\2\2\u052c\u0526\3\2\2\2\u052c\u0527\3\2"+
+		"\2\2\u052c\u0528\3\2\2\2\u052c\u0529\3\2\2\2\u052c\u052a\3\2\2\2\u052c"+
+		"\u052b\3\2\2\2\u052d\u0099\3\2\2\2\u052e\u0533\5\u011e\u0090\2\u052f\u0533"+
+		"\5\u00a0Q\2\u0530\u0533\5\u008eH\2\u0531\u0533\5\u015e\u00b0\2\u0532\u052e"+
+		"\3\2\2\2\u0532\u052f\3\2\2\2\u0532\u0530\3\2\2\2\u0532\u0531\3\2\2\2\u0533"+
+		"\u009b\3\2\2\2\u0534\u0535\7\27\2\2\u0535\u0536\7U\2\2\u0536\u0537\5X"+
+		"-\2\u0537\u0538\7V\2\2\u0538\u053e\3\2\2\2\u0539\u053a\7\27\2\2\u053a"+
+		"\u053b\7U\2\2\u053b\u053c\7\n\2\2\u053c\u053e\7V\2\2\u053d\u0534\3\2\2"+
+		"\2\u053d\u0539\3\2\2\2\u053e\u009d\3\2\2\2\u053f\u0541\5\u0128\u0095\2"+
+		"\u0540\u0542\5\u00d0i\2\u0541\u0540\3\2\2\2\u0541\u0542\3\2\2\2\u0542"+
+		"\u0544\3\2\2\2\u0543\u0545\5\f\7\2\u0544\u0543\3\2\2\2\u0544\u0545\3\2"+
+		"\2\2\u0545\u0546\3\2\2\2\u0546\u0547\7\u0084\2\2\u0547\u0558\3\2\2\2\u0548"+
+		"\u0549\5\u0128\u0095\2\u0549\u054a\5\u015e\u00b0\2\u054a\u0558\3\2\2\2"+
+		"\u054b\u054c\5\u0128\u0095\2\u054c\u054e\5\f\7\2\u054d\u054f\7B\2\2\u054e"+
+		"\u054d\3\2\2\2\u054e\u054f\3\2\2\2\u054f\u0550\3\2\2\2\u0550\u0551\5\u015e"+
+		"\u00b0\2\u0551\u0558\3\2\2\2\u0552\u0554\7\36\2\2\u0553\u0555\5\f\7\2"+
+		"\u0554\u0553\3\2\2\2\u0554\u0555\3\2\2\2\u0555\u0556\3\2\2\2\u0556\u0558"+
+		"\7\u0084\2\2\u0557\u053f\3\2\2\2\u0557\u0548\3\2\2\2\u0557\u054b\3\2\2"+
+		"\2\u0557\u0552\3\2\2\2\u0558\u009f\3\2\2\2\u0559\u055a\7\u0084\2\2\u055a"+
+		"\u00a1\3\2\2\2\u055b\u055c\5\u00a4S\2\u055c\u055e\7Y\2\2\u055d\u055f\5"+
+		"\u00acW\2\u055e\u055d\3\2\2\2\u055e\u055f\3\2\2\2\u055f\u0560\3\2\2\2"+
+		"\u0560\u0561\7Z\2\2\u0561\u0569\3\2\2\2\u0562\u0563\5\u00a4S\2\u0563\u0564"+
+		"\7Y\2\2\u0564\u0565\5\u00acW\2\u0565\u0566\7z\2\2\u0566\u0567\7Z\2\2\u0567"+
+		"\u0569\3\2\2\2\u0568\u055b\3\2\2\2\u0568\u0562\3\2\2\2\u0569\u00a3\3\2"+
+		"\2\2\u056a\u056c\5\u00a8U\2\u056b\u056d\5\u00d0i\2\u056c\u056b\3\2\2\2"+
+		"\u056c\u056d\3\2\2\2\u056d\u056f\3\2\2\2\u056e\u0570\7\u0084\2\2\u056f"+
+		"\u056e\3\2\2\2\u056f\u0570\3\2\2\2\u0570\u0572\3\2\2\2\u0571\u0573\5\u00aa"+
+		"V\2\u0572\u0571\3\2\2\2\u0572\u0573\3\2\2\2\u0573\u057e\3\2\2\2\u0574"+
+		"\u0576\5\u00a8U\2\u0575\u0577\5\u00d0i\2\u0576\u0575\3\2\2\2\u0576\u0577"+
+		"\3\2\2\2\u0577\u0578\3\2\2\2\u0578\u0579\5\f\7\2\u0579\u057b\7\u0084\2"+
+		"\2\u057a\u057c\5\u00aaV\2\u057b\u057a\3\2\2\2\u057b\u057c\3\2\2\2\u057c"+
 		"\u057e\3\2\2\2\u057d\u056a\3\2\2\2\u057d\u0574\3\2\2\2\u057e\u00a5\3\2"+
 		"\2\2\u057f\u0581\5\u00a8U\2\u0580\u0582\5\u00d0i\2\u0581\u0580\3\2\2\2"+
-		"\u0581\u0582\3\2\2\2\u0582\u0583\3\2\2\2\u0583\u0585\7\u0082\2\2\u0584"+
+		"\u0581\u0582\3\2\2\2\u0582\u0583\3\2\2\2\u0583\u0585\7\u0084\2\2\u0584"+
 		"\u0586\5\u00aaV\2\u0585\u0584\3\2\2\2\u0585\u0586\3\2\2\2\u0586\u0587"+
-		"\3\2\2\2\u0587\u0588\7~\2\2\u0588\u00a7\3\2\2\2\u0589\u058f\7\34\2\2\u058a"+
-		"\u058b\7\34\2\2\u058b\u058f\7\20\2\2\u058c\u058d\7\34\2\2\u058d\u058f"+
-		"\7>\2\2\u058e\u0589\3\2\2\2\u058e\u058a\3\2\2\2\u058e\u058c\3\2\2\2\u058f"+
-		"\u00a9\3\2\2\2\u0590\u0591\7|\2\2\u0591\u0592\5\u0094K\2\u0592\u00ab\3"+
-		"\2\2\2\u0593\u0594\bW\1\2\u0594\u0595\5\u00aeX\2\u0595\u059b\3\2\2\2\u0596"+
-		"\u0597\f\3\2\2\u0597\u0598\7x\2\2\u0598\u059a\5\u00aeX\2\u0599\u0596\3"+
-		"\2\2\2\u059a\u059d\3\2\2\2\u059b\u0599\3\2\2\2\u059b\u059c\3\2\2\2\u059c"+
-		"\u00ad\3\2\2\2\u059d\u059b\3\2\2\2\u059e\u05a4\5\u00b0Y\2\u059f\u05a0"+
-		"\5\u00b0Y\2\u05a0\u05a1\7c\2\2\u05a1\u05a2\5Z.\2\u05a2\u05a4\3\2\2\2\u05a3"+
-		"\u059e\3\2\2\2\u05a3\u059f\3\2\2\2\u05a4\u00af\3\2\2\2\u05a5\u05a6\7\u0082"+
-		"\2\2\u05a6\u00b1\3\2\2\2\u05a7\u05aa\5\u00b4[\2\u05a8\u05aa\5\u00c2b\2"+
-		"\u05a9\u05a7\3\2\2\2\u05a9\u05a8\3\2\2\2\u05aa\u00b3\3\2\2\2\u05ab\u05ac"+
-		"\7\u0082\2\2\u05ac\u00b5\3\2\2\2\u05ad\u05b0\5\u00b8]\2\u05ae\u05b0\5"+
-		"\u00be`\2\u05af\u05ad\3\2\2\2\u05af\u05ae\3\2\2\2\u05b0\u00b7\3\2\2\2"+
-		"\u05b1\u05b4\5\u00ba^\2\u05b2\u05b4\5\u00bc_\2\u05b3\u05b1\3\2\2\2\u05b3"+
-		"\u05b2\3\2\2\2\u05b4\u00b9\3\2\2\2\u05b5\u05b7\7\'\2\2\u05b6\u05b5\3\2"+
-		"\2\2\u05b6\u05b7\3\2\2\2\u05b7\u05b8\3\2\2\2\u05b8\u05b9\7+\2\2\u05b9"+
-		"\u05ba\7\u0082\2\2\u05ba\u05bb\7W\2\2\u05bb\u05bc\5\u00c0a\2\u05bc\u05bd"+
-		"\7X\2\2\u05bd\u00bb\3\2\2\2\u05be\u05c0\7\'\2\2\u05bf\u05be\3\2\2\2\u05bf"+
-		"\u05c0\3\2\2\2\u05c0\u05c1\3\2\2\2\u05c1\u05c2\7+\2\2\u05c2\u05c3\5\u00b4"+
-		"[\2\u05c3\u05c4\7W\2\2\u05c4\u05c5\5\u00c0a\2\u05c5\u05c6\7X\2\2\u05c6"+
-		"\u00bd\3\2\2\2\u05c7\u05c9\7\'\2\2\u05c8\u05c7\3\2\2\2\u05c8\u05c9\3\2"+
-		"\2\2\u05c9\u05ca\3\2\2\2\u05ca\u05cb\7+\2\2\u05cb\u05cc\7W\2\2\u05cc\u05cd"+
-		"\5\u00c0a\2\u05cd\u05ce\7X\2\2\u05ce\u00bf\3\2\2\2\u05cf\u05d1\5v<\2\u05d0"+
-		"\u05cf\3\2\2\2\u05d0\u05d1\3\2\2\2\u05d1\u00c1\3\2\2\2\u05d2\u05d3\7\u0082"+
-		"\2\2\u05d3\u00c3\3\2\2\2\u05d4\u05d5\7+\2\2\u05d5\u05d6\7\u0082\2\2\u05d6"+
-		"\u05d7\7c\2\2\u05d7\u05d8\5\u00c6d\2\u05d8\u05d9\7~\2\2\u05d9\u00c5\3"+
-		"\2\2\2\u05da\u05dc\5\f\7\2\u05db\u05da\3\2\2\2\u05db\u05dc\3\2\2\2\u05dc"+
-		"\u05dd\3\2\2\2\u05dd\u05de\5\u00b2Z\2\u05de\u00c7\3\2\2\2\u05df\u05e1"+
-		"\7K\2\2\u05e0\u05e2\7H\2\2\u05e1\u05e0\3\2\2\2\u05e1\u05e2\3\2\2\2\u05e2"+
-		"\u05e3\3\2\2\2\u05e3\u05e4\5\f\7\2\u05e4\u05e5\5\b\5\2\u05e5\u05e6\7~"+
-		"\2\2\u05e6\u05ed\3\2\2\2\u05e7\u05e8\7K\2\2\u05e8\u05e9\7}\2\2\u05e9\u05ea"+
-		"\5\b\5\2\u05ea\u05eb\7~\2\2\u05eb\u05ed\3\2\2\2\u05ec\u05df\3\2\2\2\u05ec"+
-		"\u05e7\3\2\2\2\u05ed\u00c9\3\2\2\2\u05ee\u05f0\5\u00d0i\2\u05ef\u05ee"+
-		"\3\2\2\2\u05ef\u05f0\3\2\2\2\u05f0\u05f1\3\2\2\2\u05f1\u05f2\7K\2\2\u05f2"+
-		"\u05f4\7+\2\2\u05f3\u05f5\5\f\7\2\u05f4\u05f3\3\2\2\2\u05f4\u05f5\3\2"+
-		"\2\2\u05f5\u05f6\3\2\2\2\u05f6\u05f7\5\u00b2Z\2\u05f7\u05f8\7~\2\2\u05f8"+
-		"\u00cb\3\2\2\2\u05f9\u05fa\7\7\2\2\u05fa\u05fb\7S\2\2\u05fb\u05fc\7\u008b"+
-		"\2\2\u05fc\u05fd\7T\2\2\u05fd\u05fe\7~\2\2\u05fe\u00cd\3\2\2\2\u05ff\u0600"+
-		"\7\37\2\2\u0600\u0601\7\u008b\2\2\u0601\u0603\7W\2\2\u0602\u0604\5v<\2"+
-		"\u0603\u0602\3\2\2\2\u0603\u0604\3\2\2\2\u0604\u0605\3\2\2\2\u0605\u060a"+
-		"\7X\2\2\u0606\u0607\7\37\2\2\u0607\u0608\7\u008b\2\2\u0608\u060a\5x=\2"+
-		"\u0609\u05ff\3\2\2\2\u0609\u0606\3\2\2\2\u060a\u00cf\3\2\2\2\u060b\u060c"+
-		"\bi\1\2\u060c\u060d\5\u00d2j\2\u060d\u0612\3\2\2\2\u060e\u060f\f\3\2\2"+
-		"\u060f\u0611\5\u00d2j\2\u0610\u060e\3\2\2\2\u0611\u0614\3\2\2\2\u0612"+
-		"\u0610\3\2\2\2\u0612\u0613\3\2\2\2\u0613\u00d1\3\2\2\2\u0614\u0612\3\2"+
-		"\2\2\u0615\u0616\7U\2\2\u0616\u0617\7U\2\2\u0617\u0618\5\u00d6l\2\u0618"+
-		"\u0619\7V\2\2\u0619\u061a\7V\2\2\u061a\u061d\3\2\2\2\u061b\u061d\5\u00d4"+
-		"k\2\u061c\u0615\3\2\2\2\u061c\u061b\3\2\2\2\u061d\u00d3\3\2\2\2\u061e"+
-		"\u061f\7\5\2\2\u061f\u0620\7S\2\2\u0620\u0622\5\u00fe\u0080\2\u0621\u0623"+
-		"\7\u0081\2\2\u0622\u0621\3\2\2\2\u0622\u0623\3\2\2\2\u0623\u0624\3\2\2"+
-		"\2\u0624\u0625\7T\2\2\u0625\u062f\3\2\2\2\u0626\u0627\7\5\2\2\u0627\u0628"+
-		"\7S\2\2\u0628\u062a\5Z.\2\u0629\u062b\7\u0081\2\2\u062a\u0629\3\2\2\2"+
-		"\u062a\u062b\3\2\2\2\u062b\u062c\3\2\2\2\u062c\u062d\7T\2\2\u062d\u062f"+
-		"\3\2\2\2\u062e\u061e\3\2\2\2\u062e\u0626\3\2\2\2\u062f\u00d5\3\2\2\2\u0630"+
-		"\u0632\bl\1\2\u0631\u0633\5\u00d8m\2\u0632\u0631\3\2\2\2\u0632\u0633\3"+
-		"\2\2\2\u0633\u0638\3\2\2\2\u0634\u0635\5\u00d8m\2\u0635\u0636\7\u0081"+
-		"\2\2\u0636\u0638\3\2\2\2\u0637\u0630\3\2\2\2\u0637\u0634\3\2\2\2\u0638"+
-		"\u0645\3\2\2\2\u0639\u063a\f\5\2\2\u063a\u063c\7x\2\2\u063b\u063d\5\u00d8"+
-		"m\2\u063c\u063b\3\2\2\2\u063c\u063d\3\2\2\2\u063d\u0644\3\2\2\2\u063e"+
-		"\u063f\f\3\2\2\u063f\u0640\7x\2\2\u0640\u0641\5\u00d8m\2\u0641\u0642\7"+
-		"\u0081\2\2\u0642\u0644\3\2\2\2\u0643\u0639\3\2\2\2\u0643\u063e\3\2\2\2"+
-		"\u0644\u0647\3\2\2\2\u0645\u0643\3\2\2\2\u0645\u0646\3\2\2\2\u0646\u00d7"+
-		"\3\2\2\2\u0647\u0645\3\2\2\2\u0648\u064a\5\u00dan\2\u0649\u064b\5\u00e0"+
-		"q\2\u064a\u0649\3\2\2\2\u064a\u064b\3\2\2\2\u064b\u00d9\3\2\2\2\u064c"+
-		"\u064f\7\u0082\2\2\u064d\u064f\5\u00dco\2\u064e\u064c\3\2\2\2\u064e\u064d"+
-		"\3\2\2\2\u064f\u00db\3\2\2\2\u0650\u0651\5\u00dep\2\u0651\u0652\7}\2\2"+
-		"\u0652\u0653\7\u0082\2\2\u0653\u00dd\3\2\2\2\u0654\u0655\7\u0082\2\2\u0655"+
-		"\u00df\3\2\2\2\u0656\u0657\7S\2\2\u0657\u0658\5\u00e2r\2\u0658\u0659\7"+
-		"T\2\2\u0659\u00e1\3\2\2\2\u065a\u065c\br\1\2\u065b\u065d\5\u00e4s\2\u065c"+
-		"\u065b\3\2\2\2\u065c\u065d\3\2\2\2\u065d\u0662\3\2\2\2\u065e\u065f\f\3"+
-		"\2\2\u065f\u0661\5\u00e4s\2\u0660\u065e\3\2\2\2\u0661\u0664\3\2\2\2\u0662"+
-		"\u0660\3\2\2\2\u0662\u0663\3\2\2\2\u0663\u00e3\3\2\2\2\u0664\u0662\3\2"+
-		"\2\2\u0665\u0666\7S\2\2\u0666\u0667\5\u00e2r\2\u0667\u0668\7T\2\2\u0668"+
-		"\u0672\3\2\2\2\u0669\u066a\7U\2\2\u066a\u066b\5\u00e2r\2\u066b\u066c\7"+
-		"V\2\2\u066c\u0672\3\2\2\2\u066d\u066e\7W\2\2\u066e\u066f\5\u00e2r\2\u066f"+
-		"\u0670\7X\2\2\u0670\u0672\3\2\2\2\u0671\u0665\3\2\2\2\u0671\u0669\3\2"+
-		"\2\2\u0671\u066d\3\2\2\2\u0672\u00e5\3\2\2\2\u0673\u0674\bt\1\2\u0674"+
-		"\u0675\5\u00e8u\2\u0675\u067b\3\2\2\2\u0676\u0677\f\3\2\2\u0677\u0678"+
-		"\7x\2\2\u0678\u067a\5\u00e8u\2\u0679\u0676\3\2\2\2\u067a\u067d\3\2\2\2"+
-		"\u067b\u0679\3\2\2\2\u067b\u067c\3\2\2\2\u067c\u00e7\3\2\2\2\u067d\u067b"+
-		"\3\2\2\2\u067e\u0680\5\u00eav\2\u067f\u0681\5\u0114\u008b\2\u0680\u067f"+
-		"\3\2\2\2\u0680\u0681\3\2\2\2\u0681\u00e9\3\2\2\2\u0682\u0688\5\u00ecw"+
-		"\2\u0683\u0684\5\u00eex\2\u0684\u0685\5\u00f0y\2\u0685\u0686\5\u00f2z"+
-		"\2\u0686\u0688\3\2\2\2\u0687\u0682\3\2\2\2\u0687\u0683\3\2\2\2\u0688\u00eb"+
-		"\3\2\2\2\u0689\u068e\5\u00eex\2\u068a\u068b\5\u00f4{\2\u068b\u068c\5\u00ec"+
-		"w\2\u068c\u068e\3\2\2\2\u068d\u0689\3\2\2\2\u068d\u068a\3\2\2\2\u068e"+
-		"\u00ed\3\2\2\2\u068f\u0690\bx\1\2\u0690\u0692\5\u00fc\177\2\u0691\u0693"+
-		"\5\u00d0i\2\u0692\u0691\3\2\2\2\u0692\u0693\3\2\2\2\u0693\u0699\3\2\2"+
-		"\2\u0694\u0695\7S\2\2\u0695\u0696\5\u00ecw\2\u0696\u0697\7T\2\2\u0697"+
-		"\u0699\3\2\2\2\u0698\u068f\3\2\2\2\u0698\u0694\3\2\2\2\u0699\u06a7\3\2"+
-		"\2\2\u069a\u069b\f\5\2\2\u069b\u06a6\5\u00f0y\2\u069c\u069d\f\4\2\2\u069d"+
-		"\u069f\7U\2\2\u069e\u06a0\5Z.\2\u069f\u069e\3\2\2\2\u069f\u06a0\3\2\2"+
-		"\2\u06a0\u06a1\3\2\2\2\u06a1\u06a3\7V\2\2\u06a2\u06a4\5\u00d0i\2\u06a3"+
-		"\u06a2\3\2\2\2\u06a3\u06a4\3\2\2\2\u06a4\u06a6\3\2\2\2\u06a5\u069a\3\2"+
-		"\2\2\u06a5\u069c\3\2\2\2\u06a6\u06a9\3\2\2\2\u06a7\u06a5\3\2\2\2\u06a7"+
-		"\u06a8\3\2\2\2\u06a8\u00ef\3\2\2\2\u06a9\u06a7\3\2\2\2\u06aa\u06ab\7S"+
-		"\2\2\u06ab\u06ac\5\u010a\u0086\2\u06ac\u06ae\7T\2\2\u06ad\u06af\5\u00f6"+
-		"|\2\u06ae\u06ad\3\2\2\2\u06ae\u06af\3\2\2\2\u06af\u06b1\3\2\2\2\u06b0"+
-		"\u06b2\5\u00fa~\2\u06b1\u06b0\3\2\2\2\u06b1\u06b2\3\2\2\2\u06b2\u06b4"+
-		"\3\2\2\2\u06b3\u06b5\5\u017a\u00be\2\u06b4\u06b3\3\2\2\2\u06b4\u06b5\3"+
-		"\2\2\2\u06b5\u06b7\3\2\2\2\u06b6\u06b8\5\u00d0i\2\u06b7\u06b6\3\2\2\2"+
-		"\u06b7\u06b8\3\2\2\2\u06b8\u00f1\3\2\2\2\u06b9\u06ba\7z\2\2\u06ba\u06bc"+
-		"\5\u0096L\2\u06bb\u06bd\5\u0100\u0081\2\u06bc\u06bb\3\2\2\2\u06bc\u06bd"+
-		"\3\2\2\2\u06bd\u00f3\3\2\2\2\u06be\u06c0\7[\2\2\u06bf\u06c1\5\u00d0i\2"+
-		"\u06c0\u06bf\3\2\2\2\u06c0\u06c1\3\2\2\2\u06c1\u06c3\3\2\2\2\u06c2\u06c4"+
-		"\5\u00f6|\2\u06c3\u06c2\3\2\2\2\u06c3\u06c4\3\2\2\2\u06c4\u06d6\3\2\2"+
-		"\2\u06c5\u06c7\7_\2\2\u06c6\u06c8\5\u00d0i\2\u06c7\u06c6\3\2\2\2\u06c7"+
-		"\u06c8\3\2\2\2\u06c8\u06d6\3\2\2\2\u06c9\u06cb\7t\2\2\u06ca\u06cc\5\u00d0"+
-		"i\2\u06cb\u06ca\3\2\2\2\u06cb\u06cc\3\2\2\2\u06cc\u06d6\3\2\2\2\u06cd"+
-		"\u06ce\5\f\7\2\u06ce\u06d0\7[\2\2\u06cf\u06d1\5\u00d0i\2\u06d0\u06cf\3"+
-		"\2\2\2\u06d0\u06d1\3\2\2\2\u06d1\u06d3\3\2\2\2\u06d2\u06d4\5\u00f6|\2"+
-		"\u06d3\u06d2\3\2\2\2\u06d3\u06d4\3\2\2\2\u06d4\u06d6\3\2\2\2\u06d5\u06be"+
-		"\3\2\2\2\u06d5\u06c5\3\2\2\2\u06d5\u06c9\3\2\2\2\u06d5\u06cd\3\2\2\2\u06d6"+
-		"\u00f5\3\2\2\2\u06d7\u06d9\5\u00f8}\2\u06d8\u06da\5\u00f6|\2\u06d9\u06d8"+
-		"\3\2\2\2\u06d9\u06da\3\2\2\2\u06da\u00f7\3\2\2\2\u06db\u06dc\t\6\2\2\u06dc"+
-		"\u00f9\3\2\2\2\u06dd\u06de\t\7\2\2\u06de\u00fb\3\2\2\2\u06df\u06e1\7\u0081"+
-		"\2\2\u06e0\u06df\3\2\2\2\u06e0\u06e1\3\2\2\2\u06e1\u06e2\3\2\2\2\u06e2"+
-		"\u06e3\5\6\4\2\u06e3\u00fd\3\2\2\2\u06e4\u06e6\5\u0094K\2\u06e5\u06e7"+
-		"\5\u0100\u0081\2\u06e6\u06e5\3\2\2\2\u06e6\u06e7\3\2\2\2\u06e7\u00ff\3"+
-		"\2\2\2\u06e8\u06f1\5\u0102\u0082\2\u06e9\u06eb\5\u0104\u0083\2\u06ea\u06e9"+
-		"\3\2\2\2\u06ea\u06eb\3\2\2\2\u06eb\u06ec\3\2\2\2\u06ec\u06ed\5\u00f0y"+
-		"\2\u06ed\u06ee\5\u00f2z\2\u06ee\u06f1\3\2\2\2\u06ef\u06f1\5\u0106\u0084"+
-		"\2\u06f0\u06e8\3\2\2\2\u06f0\u06ea\3\2\2\2\u06f0\u06ef\3\2\2\2\u06f1\u0101"+
-		"\3\2\2\2\u06f2\u06f8\5\u0104\u0083\2\u06f3\u06f5\5\u00f4{\2\u06f4\u06f6"+
-		"\5\u0102\u0082\2\u06f5\u06f4\3\2\2\2\u06f5\u06f6\3\2\2\2\u06f6\u06f8\3"+
-		"\2\2\2\u06f7\u06f2\3\2\2\2\u06f7\u06f3\3\2\2\2\u06f8\u0103\3\2\2\2\u06f9"+
-		"\u06fa\b\u0083\1\2\u06fa\u0708\5\u00f0y\2\u06fb\u06fd\7U\2\2\u06fc\u06fe"+
-		"\5Z.\2\u06fd\u06fc\3\2\2\2\u06fd\u06fe\3\2\2\2\u06fe\u06ff\3\2\2\2\u06ff"+
-		"\u0701\7V\2\2\u0700\u0702\5\u00d0i\2\u0701\u0700\3\2\2\2\u0701\u0702\3"+
-		"\2\2\2\u0702\u0708\3\2\2\2\u0703\u0704\7S\2\2\u0704\u0705\5\u0102\u0082"+
-		"\2\u0705\u0706\7T\2\2\u0706\u0708\3\2\2\2\u0707\u06f9\3\2\2\2\u0707\u06fb"+
-		"\3\2\2\2\u0707\u0703\3\2\2\2\u0708\u0716\3\2\2\2\u0709\u070a\f\7\2\2\u070a"+
-		"\u0715\5\u00f0y\2\u070b\u070c\f\5\2\2\u070c\u070e\7U\2\2\u070d\u070f\5"+
-		"Z.\2\u070e\u070d\3\2\2\2\u070e\u070f\3\2\2\2\u070f\u0710\3\2\2\2\u0710"+
-		"\u0712\7V\2\2\u0711\u0713\5\u00d0i\2\u0712\u0711\3\2\2\2\u0712\u0713\3"+
-		"\2\2\2\u0713\u0715\3\2\2\2\u0714\u0709\3\2\2\2\u0714\u070b\3\2\2\2\u0715"+
-		"\u0718\3\2\2\2\u0716\u0714\3\2\2\2\u0716\u0717\3\2\2\2\u0717\u0105\3\2"+
-		"\2\2\u0718\u0716\3\2\2\2\u0719\u071e\5\u0108\u0085\2\u071a\u071b\5\u00f4"+
-		"{\2\u071b\u071c\5\u0106\u0084\2\u071c\u071e\3\2\2\2\u071d\u0719\3\2\2"+
-		"\2\u071d\u071a\3\2\2\2\u071e\u0107\3\2\2\2\u071f\u0720\b\u0085\1\2\u0720"+
-		"\u0721\7\u0081\2\2\u0721\u072f\3\2\2\2\u0722\u0723\f\5\2\2\u0723\u072e"+
-		"\5\u00f0y\2\u0724\u0725\f\4\2\2\u0725\u0727\7U\2\2\u0726\u0728\5Z.\2\u0727"+
-		"\u0726\3\2\2\2\u0727\u0728\3\2\2\2\u0728\u0729\3\2\2\2\u0729\u072b\7V"+
-		"\2\2\u072a\u072c\5\u00d0i\2\u072b\u072a\3\2\2\2\u072b\u072c\3\2\2\2\u072c"+
-		"\u072e\3\2\2\2\u072d\u0722\3\2\2\2\u072d\u0724\3\2\2\2\u072e\u0731\3\2"+
-		"\2\2\u072f\u072d\3\2\2\2\u072f\u0730\3\2\2\2\u0730\u0109\3\2\2\2\u0731"+
-		"\u072f\3\2\2\2\u0732\u0734\5\u010c\u0087\2\u0733\u0732\3\2\2\2\u0733\u0734"+
-		"\3\2\2\2\u0734\u0736\3\2\2\2\u0735\u0737\7\u0081\2\2\u0736\u0735\3\2\2"+
-		"\2\u0736\u0737\3\2\2\2\u0737\u073d\3\2\2\2\u0738\u0739\5\u010c\u0087\2"+
-		"\u0739\u073a\7x\2\2\u073a\u073b\7\u0081\2\2\u073b\u073d\3\2\2\2\u073c"+
-		"\u0733\3\2\2\2\u073c\u0738\3\2\2\2\u073d\u010b\3\2\2\2\u073e\u073f\b\u0087"+
-		"\1\2\u073f\u0740\5\u010e\u0088\2\u0740\u0746\3\2\2\2\u0741\u0742\f\3\2"+
-		"\2\u0742\u0743\7x\2\2\u0743\u0745\5\u010e\u0088\2\u0744\u0741\3\2\2\2"+
-		"\u0745\u0748\3\2\2\2\u0746\u0744\3\2\2\2\u0746\u0747\3\2\2\2\u0747\u010d"+
-		"\3\2\2\2\u0748\u0746\3\2\2\2\u0749\u074b\5\u00d0i\2\u074a\u0749\3\2\2"+
-		"\2\u074a\u074b\3\2\2\2\u074b\u074c\3\2\2\2\u074c\u074d\5\u0088E\2\u074d"+
-		"\u074e\5\u00eav\2\u074e\u0769\3\2\2\2\u074f\u0751\5\u00d0i\2\u0750\u074f"+
-		"\3\2\2\2\u0750\u0751\3\2\2\2\u0751\u0752\3\2\2\2\u0752\u0753\5\u0088E"+
-		"\2\u0753\u0754\5\u00eav\2\u0754\u0755\7c\2\2\u0755\u0756\5\u0118\u008d"+
-		"\2\u0756\u0769\3\2\2\2\u0757\u0759\5\u00d0i\2\u0758\u0757\3\2\2\2\u0758"+
-		"\u0759\3\2\2\2\u0759\u075a\3\2\2\2\u075a\u075c\5\u0088E\2\u075b\u075d"+
-		"\5\u0100\u0081\2\u075c\u075b\3\2\2\2\u075c\u075d\3\2\2\2\u075d\u0769\3"+
-		"\2\2\2\u075e\u0760\5\u00d0i\2\u075f\u075e\3\2\2\2\u075f\u0760\3\2\2\2"+
-		"\u0760\u0761\3\2\2\2\u0761\u0763\5\u0088E\2\u0762\u0764\5\u0100\u0081"+
-		"\2\u0763\u0762\3\2\2\2\u0763\u0764\3\2\2\2\u0764\u0765\3\2\2\2\u0765\u0766"+
-		"\7c\2\2\u0766\u0767\5\u0118\u008d\2\u0767\u0769\3\2\2\2\u0768\u074a\3"+
-		"\2\2\2\u0768\u0750\3\2\2\2\u0768\u0758\3\2\2\2\u0768\u075f\3\2\2\2\u0769"+
-		"\u010f\3\2\2\2\u076a\u076c\5\u00d0i\2\u076b\u076a\3\2\2\2\u076b\u076c"+
-		"\3\2\2\2\u076c\u076e\3\2\2\2\u076d\u076f\5\u0088E\2\u076e\u076d\3\2\2"+
-		"\2\u076e\u076f\3\2\2\2\u076f\u0770\3\2\2\2\u0770\u0772\5\u00eav\2\u0771"+
-		"\u0773\5\u0132\u009a\2\u0772\u0771\3\2\2\2\u0772\u0773\3\2\2\2\u0773\u0774"+
-		"\3\2\2\2\u0774\u0775\5\u0112\u008a\2\u0775\u0111\3\2\2\2\u0776\u0778\5"+
-		"\u014a\u00a6\2\u0777\u0776\3\2\2\2\u0777\u0778\3\2\2\2\u0778\u0779\3\2"+
-		"\2\2\u0779\u0782\5b\62\2\u077a\u0782\5\u0170\u00b9\2\u077b\u077c\7c\2"+
-		"\2\u077c\u077d\7\26\2\2\u077d\u0782\7~\2\2\u077e\u077f\7c\2\2\u077f\u0780"+
-		"\7\27\2\2\u0780\u0782\7~\2\2\u0781\u0777\3\2\2\2\u0781\u077a\3\2\2\2\u0781"+
-		"\u077b\3\2\2\2\u0781\u077e\3\2\2\2\u0782\u0113\3\2\2\2\u0783\u0789\5\u0116"+
-		"\u008c\2\u0784\u0785\7S\2\2\u0785\u0786\5\"\22\2\u0786\u0787\7T\2\2\u0787"+
-		"\u0789\3\2\2\2\u0788\u0783\3\2\2\2\u0788\u0784\3\2\2\2\u0789\u0115\3\2"+
-		"\2\2\u078a\u078b\7c\2\2\u078b\u078e\5\u0118\u008d\2\u078c\u078e\5\u011c"+
-		"\u008f\2\u078d\u078a\3\2\2\2\u078d\u078c\3\2\2\2\u078e\u0117\3\2\2\2\u078f"+
-		"\u0792\5T+\2\u0790\u0792\5\u011c\u008f\2\u0791\u078f\3\2\2\2\u0791\u0790"+
-		"\3\2\2\2\u0792\u0119\3\2\2\2\u0793\u0794\b\u008e\1\2\u0794\u0796\5\u0118"+
-		"\u008d\2\u0795\u0797\7\u0081\2\2\u0796\u0795\3\2\2\2\u0796\u0797\3\2\2"+
-		"\2\u0797\u07a0\3\2\2\2\u0798\u0799\f\3\2\2\u0799\u079a\7x\2\2\u079a\u079c"+
-		"\5\u0118\u008d\2\u079b\u079d\7\u0081\2\2\u079c\u079b\3\2\2\2\u079c\u079d"+
-		"\3\2\2\2\u079d\u079f\3\2\2\2\u079e\u0798\3\2\2\2\u079f\u07a2\3\2\2\2\u07a0"+
-		"\u079e\3\2\2\2\u07a0\u07a1\3\2\2\2\u07a1\u011b\3\2\2\2\u07a2\u07a0\3\2"+
-		"\2\2\u07a3\u07a4\7W\2\2\u07a4\u07a6\5\u011a\u008e\2\u07a5\u07a7\7x\2\2"+
-		"\u07a6\u07a5\3\2\2\2\u07a6\u07a7\3\2\2\2\u07a7\u07a8\3\2\2\2\u07a8\u07a9"+
-		"\7X\2\2\u07a9\u07ad\3\2\2\2\u07aa\u07ab\7W\2\2\u07ab\u07ad\7X\2\2\u07ac"+
-		"\u07a3\3\2\2\2\u07ac\u07aa\3\2\2\2\u07ad\u011d\3\2\2\2\u07ae\u07b1\7\u0082"+
-		"\2\2\u07af\u07b1\5\u015e\u00b0\2\u07b0\u07ae\3\2\2\2\u07b0\u07af\3\2\2"+
-		"\2\u07b1\u011f\3\2\2\2\u07b2\u07b3\5\u0122\u0092\2\u07b3\u07b5\7W\2\2"+
-		"\u07b4\u07b6\5\u012a\u0096\2\u07b5\u07b4\3\2\2\2\u07b5\u07b6\3\2\2\2\u07b6"+
-		"\u07b7\3\2\2\2\u07b7\u07b8\7X\2\2\u07b8\u0121\3\2\2\2\u07b9\u07bb\5\u0128"+
-		"\u0095\2\u07ba\u07bc\5\u00d0i\2\u07bb\u07ba\3\2\2\2\u07bb\u07bc\3\2\2"+
-		"\2\u07bc\u07bd\3\2\2\2\u07bd\u07bf\5\u0124\u0093\2\u07be\u07c0\5\u0126"+
-		"\u0094\2\u07bf\u07be\3\2\2\2\u07bf\u07c0\3\2\2\2\u07c0\u07c2\3\2\2\2\u07c1"+
-		"\u07c3\5\u0138\u009d\2\u07c2\u07c1\3\2\2\2\u07c2\u07c3\3\2\2\2\u07c3\u07cc"+
-		"\3\2\2\2\u07c4\u07c6\5\u0128\u0095\2\u07c5\u07c7\5\u00d0i\2\u07c6\u07c5"+
+		"\3\2\2\2\u0587\u0588\7\u0080\2\2\u0588\u00a7\3\2\2\2\u0589\u058f\7\36"+
+		"\2\2\u058a\u058b\7\36\2\2\u058b\u058f\7\22\2\2\u058c\u058d\7\36\2\2\u058d"+
+		"\u058f\7@\2\2\u058e\u0589\3\2\2\2\u058e\u058a\3\2\2\2\u058e\u058c\3\2"+
+		"\2\2\u058f\u00a9\3\2\2\2\u0590\u0591\7~\2\2\u0591\u0592\5\u0094K\2\u0592"+
+		"\u00ab\3\2\2\2\u0593\u0594\bW\1\2\u0594\u0595\5\u00aeX\2\u0595\u059b\3"+
+		"\2\2\2\u0596\u0597\f\3\2\2\u0597\u0598\7z\2\2\u0598\u059a\5\u00aeX\2\u0599"+
+		"\u0596\3\2\2\2\u059a\u059d\3\2\2\2\u059b\u0599\3\2\2\2\u059b\u059c\3\2"+
+		"\2\2\u059c\u00ad\3\2\2\2\u059d\u059b\3\2\2\2\u059e\u05a4\5\u00b0Y\2\u059f"+
+		"\u05a0\5\u00b0Y\2\u05a0\u05a1\7e\2\2\u05a1\u05a2\5Z.\2\u05a2\u05a4\3\2"+
+		"\2\2\u05a3\u059e\3\2\2\2\u05a3\u059f\3\2\2\2\u05a4\u00af\3\2\2\2\u05a5"+
+		"\u05a6\7\u0084\2\2\u05a6\u00b1\3\2\2\2\u05a7\u05aa\5\u00b4[\2\u05a8\u05aa"+
+		"\5\u00c2b\2\u05a9\u05a7\3\2\2\2\u05a9\u05a8\3\2\2\2\u05aa\u00b3\3\2\2"+
+		"\2\u05ab\u05ac\7\u0084\2\2\u05ac\u00b5\3\2\2\2\u05ad\u05b0\5\u00b8]\2"+
+		"\u05ae\u05b0\5\u00be`\2\u05af\u05ad\3\2\2\2\u05af\u05ae\3\2\2\2\u05b0"+
+		"\u00b7\3\2\2\2\u05b1\u05b4\5\u00ba^\2\u05b2\u05b4\5\u00bc_\2\u05b3\u05b1"+
+		"\3\2\2\2\u05b3\u05b2\3\2\2\2\u05b4\u00b9\3\2\2\2\u05b5\u05b7\7)\2\2\u05b6"+
+		"\u05b5\3\2\2\2\u05b6\u05b7\3\2\2\2\u05b7\u05b8\3\2\2\2\u05b8\u05b9\7-"+
+		"\2\2\u05b9\u05ba\7\u0084\2\2\u05ba\u05bb\7Y\2\2\u05bb\u05bc\5\u00c0a\2"+
+		"\u05bc\u05bd\7Z\2\2\u05bd\u00bb\3\2\2\2\u05be\u05c0\7)\2\2\u05bf\u05be"+
+		"\3\2\2\2\u05bf\u05c0\3\2\2\2\u05c0\u05c1\3\2\2\2\u05c1\u05c2\7-\2\2\u05c2"+
+		"\u05c3\5\u00b4[\2\u05c3\u05c4\7Y\2\2\u05c4\u05c5\5\u00c0a\2\u05c5\u05c6"+
+		"\7Z\2\2\u05c6\u00bd\3\2\2\2\u05c7\u05c9\7)\2\2\u05c8\u05c7\3\2\2\2\u05c8"+
+		"\u05c9\3\2\2\2\u05c9\u05ca\3\2\2\2\u05ca\u05cb\7-\2\2\u05cb\u05cc\7Y\2"+
+		"\2\u05cc\u05cd\5\u00c0a\2\u05cd\u05ce\7Z\2\2\u05ce\u00bf\3\2\2\2\u05cf"+
+		"\u05d1\5v<\2\u05d0\u05cf\3\2\2\2\u05d0\u05d1\3\2\2\2\u05d1\u00c1\3\2\2"+
+		"\2\u05d2\u05d3\7\u0084\2\2\u05d3\u00c3\3\2\2\2\u05d4\u05d5\7-\2\2\u05d5"+
+		"\u05d6\7\u0084\2\2\u05d6\u05d7\7e\2\2\u05d7\u05d8\5\u00c6d\2\u05d8\u05d9"+
+		"\7\u0080\2\2\u05d9\u00c5\3\2\2\2\u05da\u05dc\5\f\7\2\u05db\u05da\3\2\2"+
+		"\2\u05db\u05dc\3\2\2\2\u05dc\u05dd\3\2\2\2\u05dd\u05de\5\u00b2Z\2\u05de"+
+		"\u00c7\3\2\2\2\u05df\u05e1\7M\2\2\u05e0\u05e2\7J\2\2\u05e1\u05e0\3\2\2"+
+		"\2\u05e1\u05e2\3\2\2\2\u05e2\u05e3\3\2\2\2\u05e3\u05e4\5\f\7\2\u05e4\u05e5"+
+		"\5\b\5\2\u05e5\u05e6\7\u0080\2\2\u05e6\u05ed\3\2\2\2\u05e7\u05e8\7M\2"+
+		"\2\u05e8\u05e9\7\177\2\2\u05e9\u05ea\5\b\5\2\u05ea\u05eb\7\u0080\2\2\u05eb"+
+		"\u05ed\3\2\2\2\u05ec\u05df\3\2\2\2\u05ec\u05e7\3\2\2\2\u05ed\u00c9\3\2"+
+		"\2\2\u05ee\u05f0\5\u00d0i\2\u05ef\u05ee\3\2\2\2\u05ef\u05f0\3\2\2\2\u05f0"+
+		"\u05f1\3\2\2\2\u05f1\u05f2\7M\2\2\u05f2\u05f4\7-\2\2\u05f3\u05f5\5\f\7"+
+		"\2\u05f4\u05f3\3\2\2\2\u05f4\u05f5\3\2\2\2\u05f5\u05f6\3\2\2\2\u05f6\u05f7"+
+		"\5\u00b2Z\2\u05f7\u05f8\7\u0080\2\2\u05f8\u00cb\3\2\2\2\u05f9\u05fa\7"+
+		"\t\2\2\u05fa\u05fb\7U\2\2\u05fb\u05fc\7\u008d\2\2\u05fc\u05fd\7V\2\2\u05fd"+
+		"\u05fe\7\u0080\2\2\u05fe\u00cd\3\2\2\2\u05ff\u0600\7!\2\2\u0600\u0601"+
+		"\7\u008d\2\2\u0601\u0603\7Y\2\2\u0602\u0604\5v<\2\u0603\u0602\3\2\2\2"+
+		"\u0603\u0604\3\2\2\2\u0604\u0605\3\2\2\2\u0605\u060a\7Z\2\2\u0606\u0607"+
+		"\7!\2\2\u0607\u0608\7\u008d\2\2\u0608\u060a\5x=\2\u0609\u05ff\3\2\2\2"+
+		"\u0609\u0606\3\2\2\2\u060a\u00cf\3\2\2\2\u060b\u060c\bi\1\2\u060c\u060d"+
+		"\5\u00d2j\2\u060d\u0612\3\2\2\2\u060e\u060f\f\3\2\2\u060f\u0611\5\u00d2"+
+		"j\2\u0610\u060e\3\2\2\2\u0611\u0614\3\2\2\2\u0612\u0610\3\2\2\2\u0612"+
+		"\u0613\3\2\2\2\u0613\u00d1\3\2\2\2\u0614\u0612\3\2\2\2\u0615\u0616\7W"+
+		"\2\2\u0616\u0617\7W\2\2\u0617\u0618\5\u00d6l\2\u0618\u0619\7X\2\2\u0619"+
+		"\u061a\7X\2\2\u061a\u061d\3\2\2\2\u061b\u061d\5\u00d4k\2\u061c\u0615\3"+
+		"\2\2\2\u061c\u061b\3\2\2\2\u061d\u00d3\3\2\2\2\u061e\u061f\7\7\2\2\u061f"+
+		"\u0620\7U\2\2\u0620\u0622\5\u00fe\u0080\2\u0621\u0623\7\u0083\2\2\u0622"+
+		"\u0621\3\2\2\2\u0622\u0623\3\2\2\2\u0623\u0624\3\2\2\2\u0624\u0625\7V"+
+		"\2\2\u0625\u062f\3\2\2\2\u0626\u0627\7\7\2\2\u0627\u0628\7U\2\2\u0628"+
+		"\u062a\5Z.\2\u0629\u062b\7\u0083\2\2\u062a\u0629\3\2\2\2\u062a\u062b\3"+
+		"\2\2\2\u062b\u062c\3\2\2\2\u062c\u062d\7V\2\2\u062d\u062f\3\2\2\2\u062e"+
+		"\u061e\3\2\2\2\u062e\u0626\3\2\2\2\u062f\u00d5\3\2\2\2\u0630\u0632\bl"+
+		"\1\2\u0631\u0633\5\u00d8m\2\u0632\u0631\3\2\2\2\u0632\u0633\3\2\2\2\u0633"+
+		"\u0638\3\2\2\2\u0634\u0635\5\u00d8m\2\u0635\u0636\7\u0083\2\2\u0636\u0638"+
+		"\3\2\2\2\u0637\u0630\3\2\2\2\u0637\u0634\3\2\2\2\u0638\u0645\3\2\2\2\u0639"+
+		"\u063a\f\5\2\2\u063a\u063c\7z\2\2\u063b\u063d\5\u00d8m\2\u063c\u063b\3"+
+		"\2\2\2\u063c\u063d\3\2\2\2\u063d\u0644\3\2\2\2\u063e\u063f\f\3\2\2\u063f"+
+		"\u0640\7z\2\2\u0640\u0641\5\u00d8m\2\u0641\u0642\7\u0083\2\2\u0642\u0644"+
+		"\3\2\2\2\u0643\u0639\3\2\2\2\u0643\u063e\3\2\2\2\u0644\u0647\3\2\2\2\u0645"+
+		"\u0643\3\2\2\2\u0645\u0646\3\2\2\2\u0646\u00d7\3\2\2\2\u0647\u0645\3\2"+
+		"\2\2\u0648\u064a\5\u00dan\2\u0649\u064b\5\u00e0q\2\u064a\u0649\3\2\2\2"+
+		"\u064a\u064b\3\2\2\2\u064b\u00d9\3\2\2\2\u064c\u064f\7\u0084\2\2\u064d"+
+		"\u064f\5\u00dco\2\u064e\u064c\3\2\2\2\u064e\u064d\3\2\2\2\u064f\u00db"+
+		"\3\2\2\2\u0650\u0651\5\u00dep\2\u0651\u0652\7\177\2\2\u0652\u0653\7\u0084"+
+		"\2\2\u0653\u00dd\3\2\2\2\u0654\u0655\7\u0084\2\2\u0655\u00df\3\2\2\2\u0656"+
+		"\u0657\7U\2\2\u0657\u0658\5\u00e2r\2\u0658\u0659\7V\2\2\u0659\u00e1\3"+
+		"\2\2\2\u065a\u065c\br\1\2\u065b\u065d\5\u00e4s\2\u065c\u065b\3\2\2\2\u065c"+
+		"\u065d\3\2\2\2\u065d\u0662\3\2\2\2\u065e\u065f\f\3\2\2\u065f\u0661\5\u00e4"+
+		"s\2\u0660\u065e\3\2\2\2\u0661\u0664\3\2\2\2\u0662\u0660\3\2\2\2\u0662"+
+		"\u0663\3\2\2\2\u0663\u00e3\3\2\2\2\u0664\u0662\3\2\2\2\u0665\u0666\7U"+
+		"\2\2\u0666\u0667\5\u00e2r\2\u0667\u0668\7V\2\2\u0668\u0672\3\2\2\2\u0669"+
+		"\u066a\7W\2\2\u066a\u066b\5\u00e2r\2\u066b\u066c\7X\2\2\u066c\u0672\3"+
+		"\2\2\2\u066d\u066e\7Y\2\2\u066e\u066f\5\u00e2r\2\u066f\u0670\7Z\2\2\u0670"+
+		"\u0672\3\2\2\2\u0671\u0665\3\2\2\2\u0671\u0669\3\2\2\2\u0671\u066d\3\2"+
+		"\2\2\u0672\u00e5\3\2\2\2\u0673\u0674\bt\1\2\u0674\u0675\5\u00e8u\2\u0675"+
+		"\u067b\3\2\2\2\u0676\u0677\f\3\2\2\u0677\u0678\7z\2\2\u0678\u067a\5\u00e8"+
+		"u\2\u0679\u0676\3\2\2\2\u067a\u067d\3\2\2\2\u067b\u0679\3\2\2\2\u067b"+
+		"\u067c\3\2\2\2\u067c\u00e7\3\2\2\2\u067d\u067b\3\2\2\2\u067e\u0680\5\u00ea"+
+		"v\2\u067f\u0681\5\u0114\u008b\2\u0680\u067f\3\2\2\2\u0680\u0681\3\2\2"+
+		"\2\u0681\u00e9\3\2\2\2\u0682\u0688\5\u00ecw\2\u0683\u0684\5\u00eex\2\u0684"+
+		"\u0685\5\u00f0y\2\u0685\u0686\5\u00f2z\2\u0686\u0688\3\2\2\2\u0687\u0682"+
+		"\3\2\2\2\u0687\u0683\3\2\2\2\u0688\u00eb\3\2\2\2\u0689\u068e\5\u00eex"+
+		"\2\u068a\u068b\5\u00f4{\2\u068b\u068c\5\u00ecw\2\u068c\u068e\3\2\2\2\u068d"+
+		"\u0689\3\2\2\2\u068d\u068a\3\2\2\2\u068e\u00ed\3\2\2\2\u068f\u0690\bx"+
+		"\1\2\u0690\u0692\5\u00fc\177\2\u0691\u0693\5\u00d0i\2\u0692\u0691\3\2"+
+		"\2\2\u0692\u0693\3\2\2\2\u0693\u0699\3\2\2\2\u0694\u0695\7U\2\2\u0695"+
+		"\u0696\5\u00ecw\2\u0696\u0697\7V\2\2\u0697\u0699\3\2\2\2\u0698\u068f\3"+
+		"\2\2\2\u0698\u0694\3\2\2\2\u0699\u06a7\3\2\2\2\u069a\u069b\f\5\2\2\u069b"+
+		"\u06a6\5\u00f0y\2\u069c\u069d\f\4\2\2\u069d\u069f\7W\2\2\u069e\u06a0\5"+
+		"Z.\2\u069f\u069e\3\2\2\2\u069f\u06a0\3\2\2\2\u06a0\u06a1\3\2\2\2\u06a1"+
+		"\u06a3\7X\2\2\u06a2\u06a4\5\u00d0i\2\u06a3\u06a2\3\2\2\2\u06a3\u06a4\3"+
+		"\2\2\2\u06a4\u06a6\3\2\2\2\u06a5\u069a\3\2\2\2\u06a5\u069c\3\2\2\2\u06a6"+
+		"\u06a9\3\2\2\2\u06a7\u06a5\3\2\2\2\u06a7\u06a8\3\2\2\2\u06a8\u00ef\3\2"+
+		"\2\2\u06a9\u06a7\3\2\2\2\u06aa\u06ab\7U\2\2\u06ab\u06ac\5\u010a\u0086"+
+		"\2\u06ac\u06ae\7V\2\2\u06ad\u06af\5\u00f6|\2\u06ae\u06ad\3\2\2\2\u06ae"+
+		"\u06af\3\2\2\2\u06af\u06b1\3\2\2\2\u06b0\u06b2\5\u00fa~\2\u06b1\u06b0"+
+		"\3\2\2\2\u06b1\u06b2\3\2\2\2\u06b2\u06b4\3\2\2\2\u06b3\u06b5\5\u017a\u00be"+
+		"\2\u06b4\u06b3\3\2\2\2\u06b4\u06b5\3\2\2\2\u06b5\u06b7\3\2\2\2\u06b6\u06b8"+
+		"\5\u00d0i\2\u06b7\u06b6\3\2\2\2\u06b7\u06b8\3\2\2\2\u06b8\u00f1\3\2\2"+
+		"\2\u06b9\u06ba\7|\2\2\u06ba\u06bc\5\u0096L\2\u06bb\u06bd\5\u0100\u0081"+
+		"\2\u06bc\u06bb\3\2\2\2\u06bc\u06bd\3\2\2\2\u06bd\u00f3\3\2\2\2\u06be\u06c0"+
+		"\7]\2\2\u06bf\u06c1\5\u00d0i\2\u06c0\u06bf\3\2\2\2\u06c0\u06c1\3\2\2\2"+
+		"\u06c1\u06c3\3\2\2\2\u06c2\u06c4\5\u00f6|\2\u06c3\u06c2\3\2\2\2\u06c3"+
+		"\u06c4\3\2\2\2\u06c4\u06d6\3\2\2\2\u06c5\u06c7\7a\2\2\u06c6\u06c8\5\u00d0"+
+		"i\2\u06c7\u06c6\3\2\2\2\u06c7\u06c8\3\2\2\2\u06c8\u06d6\3\2\2\2\u06c9"+
+		"\u06cb\7v\2\2\u06ca\u06cc\5\u00d0i\2\u06cb\u06ca\3\2\2\2\u06cb\u06cc\3"+
+		"\2\2\2\u06cc\u06d6\3\2\2\2\u06cd\u06ce\5\f\7\2\u06ce\u06d0\7]\2\2\u06cf"+
+		"\u06d1\5\u00d0i\2\u06d0\u06cf\3\2\2\2\u06d0\u06d1\3\2\2\2\u06d1\u06d3"+
+		"\3\2\2\2\u06d2\u06d4\5\u00f6|\2\u06d3\u06d2\3\2\2\2\u06d3\u06d4\3\2\2"+
+		"\2\u06d4\u06d6\3\2\2\2\u06d5\u06be\3\2\2\2\u06d5\u06c5\3\2\2\2\u06d5\u06c9"+
+		"\3\2\2\2\u06d5\u06cd\3\2\2\2\u06d6\u00f5\3\2\2\2\u06d7\u06d9\5\u00f8}"+
+		"\2\u06d8\u06da\5\u00f6|\2\u06d9\u06d8\3\2\2\2\u06d9\u06da\3\2\2\2\u06da"+
+		"\u00f7\3\2\2\2\u06db\u06dc\t\6\2\2\u06dc\u00f9\3\2\2\2\u06dd\u06de\t\7"+
+		"\2\2\u06de\u00fb\3\2\2\2\u06df\u06e1\7\u0083\2\2\u06e0\u06df\3\2\2\2\u06e0"+
+		"\u06e1\3\2\2\2\u06e1\u06e2\3\2\2\2\u06e2\u06e3\5\6\4\2\u06e3\u00fd\3\2"+
+		"\2\2\u06e4\u06e6\5\u0094K\2\u06e5\u06e7\5\u0100\u0081\2\u06e6\u06e5\3"+
+		"\2\2\2\u06e6\u06e7\3\2\2\2\u06e7\u00ff\3\2\2\2\u06e8\u06f1\5\u0102\u0082"+
+		"\2\u06e9\u06eb\5\u0104\u0083\2\u06ea\u06e9\3\2\2\2\u06ea\u06eb\3\2\2\2"+
+		"\u06eb\u06ec\3\2\2\2\u06ec\u06ed\5\u00f0y\2\u06ed\u06ee\5\u00f2z\2\u06ee"+
+		"\u06f1\3\2\2\2\u06ef\u06f1\5\u0106\u0084\2\u06f0\u06e8\3\2\2\2\u06f0\u06ea"+
+		"\3\2\2\2\u06f0\u06ef\3\2\2\2\u06f1\u0101\3\2\2\2\u06f2\u06f8\5\u0104\u0083"+
+		"\2\u06f3\u06f5\5\u00f4{\2\u06f4\u06f6\5\u0102\u0082\2\u06f5\u06f4\3\2"+
+		"\2\2\u06f5\u06f6\3\2\2\2\u06f6\u06f8\3\2\2\2\u06f7\u06f2\3\2\2\2\u06f7"+
+		"\u06f3\3\2\2\2\u06f8\u0103\3\2\2\2\u06f9\u06fa\b\u0083\1\2\u06fa\u0708"+
+		"\5\u00f0y\2\u06fb\u06fd\7W\2\2\u06fc\u06fe\5Z.\2\u06fd\u06fc\3\2\2\2\u06fd"+
+		"\u06fe\3\2\2\2\u06fe\u06ff\3\2\2\2\u06ff\u0701\7X\2\2\u0700\u0702\5\u00d0"+
+		"i\2\u0701\u0700\3\2\2\2\u0701\u0702\3\2\2\2\u0702\u0708\3\2\2\2\u0703"+
+		"\u0704\7U\2\2\u0704\u0705\5\u0102\u0082\2\u0705\u0706\7V\2\2\u0706\u0708"+
+		"\3\2\2\2\u0707\u06f9\3\2\2\2\u0707\u06fb\3\2\2\2\u0707\u0703\3\2\2\2\u0708"+
+		"\u0716\3\2\2\2\u0709\u070a\f\7\2\2\u070a\u0715\5\u00f0y\2\u070b\u070c"+
+		"\f\5\2\2\u070c\u070e\7W\2\2\u070d\u070f\5Z.\2\u070e\u070d\3\2\2\2\u070e"+
+		"\u070f\3\2\2\2\u070f\u0710\3\2\2\2\u0710\u0712\7X\2\2\u0711\u0713\5\u00d0"+
+		"i\2\u0712\u0711\3\2\2\2\u0712\u0713\3\2\2\2\u0713\u0715\3\2\2\2\u0714"+
+		"\u0709\3\2\2\2\u0714\u070b\3\2\2\2\u0715\u0718\3\2\2\2\u0716\u0714\3\2"+
+		"\2\2\u0716\u0717\3\2\2\2\u0717\u0105\3\2\2\2\u0718\u0716\3\2\2\2\u0719"+
+		"\u071e\5\u0108\u0085\2\u071a\u071b\5\u00f4{\2\u071b\u071c\5\u0106\u0084"+
+		"\2\u071c\u071e\3\2\2\2\u071d\u0719\3\2\2\2\u071d\u071a\3\2\2\2\u071e\u0107"+
+		"\3\2\2\2\u071f\u0720\b\u0085\1\2\u0720\u0721\7\u0083\2\2\u0721\u072f\3"+
+		"\2\2\2\u0722\u0723\f\5\2\2\u0723\u072e\5\u00f0y\2\u0724\u0725\f\4\2\2"+
+		"\u0725\u0727\7W\2\2\u0726\u0728\5Z.\2\u0727\u0726\3\2\2\2\u0727\u0728"+
+		"\3\2\2\2\u0728\u0729\3\2\2\2\u0729\u072b\7X\2\2\u072a\u072c\5\u00d0i\2"+
+		"\u072b\u072a\3\2\2\2\u072b\u072c\3\2\2\2\u072c\u072e\3\2\2\2\u072d\u0722"+
+		"\3\2\2\2\u072d\u0724\3\2\2\2\u072e\u0731\3\2\2\2\u072f\u072d\3\2\2\2\u072f"+
+		"\u0730\3\2\2\2\u0730\u0109\3\2\2\2\u0731\u072f\3\2\2\2\u0732\u0734\5\u010c"+
+		"\u0087\2\u0733\u0732\3\2\2\2\u0733\u0734\3\2\2\2\u0734\u0736\3\2\2\2\u0735"+
+		"\u0737\7\u0083\2\2\u0736\u0735\3\2\2\2\u0736\u0737\3\2\2\2\u0737\u073d"+
+		"\3\2\2\2\u0738\u0739\5\u010c\u0087\2\u0739\u073a\7z\2\2\u073a\u073b\7"+
+		"\u0083\2\2\u073b\u073d\3\2\2\2\u073c\u0733\3\2\2\2\u073c\u0738\3\2\2\2"+
+		"\u073d\u010b\3\2\2\2\u073e\u073f\b\u0087\1\2\u073f\u0740\5\u010e\u0088"+
+		"\2\u0740\u0746\3\2\2\2\u0741\u0742\f\3\2\2\u0742\u0743\7z\2\2\u0743\u0745"+
+		"\5\u010e\u0088\2\u0744\u0741\3\2\2\2\u0745\u0748\3\2\2\2\u0746\u0744\3"+
+		"\2\2\2\u0746\u0747\3\2\2\2\u0747\u010d\3\2\2\2\u0748\u0746\3\2\2\2\u0749"+
+		"\u074b\5\u00d0i\2\u074a\u0749\3\2\2\2\u074a\u074b\3\2\2\2\u074b\u074c"+
+		"\3\2\2\2\u074c\u074d\5\u0088E\2\u074d\u074e\5\u00eav\2\u074e\u0769\3\2"+
+		"\2\2\u074f\u0751\5\u00d0i\2\u0750\u074f\3\2\2\2\u0750\u0751\3\2\2\2\u0751"+
+		"\u0752\3\2\2\2\u0752\u0753\5\u0088E\2\u0753\u0754\5\u00eav\2\u0754\u0755"+
+		"\7e\2\2\u0755\u0756\5\u0118\u008d\2\u0756\u0769\3\2\2\2\u0757\u0759\5"+
+		"\u00d0i\2\u0758\u0757\3\2\2\2\u0758\u0759\3\2\2\2\u0759\u075a\3\2\2\2"+
+		"\u075a\u075c\5\u0088E\2\u075b\u075d\5\u0100\u0081\2\u075c\u075b\3\2\2"+
+		"\2\u075c\u075d\3\2\2\2\u075d\u0769\3\2\2\2\u075e\u0760\5\u00d0i\2\u075f"+
+		"\u075e\3\2\2\2\u075f\u0760\3\2\2\2\u0760\u0761\3\2\2\2\u0761\u0763\5\u0088"+
+		"E\2\u0762\u0764\5\u0100\u0081\2\u0763\u0762\3\2\2\2\u0763\u0764\3\2\2"+
+		"\2\u0764\u0765\3\2\2\2\u0765\u0766\7e\2\2\u0766\u0767\5\u0118\u008d\2"+
+		"\u0767\u0769\3\2\2\2\u0768\u074a\3\2\2\2\u0768\u0750\3\2\2\2\u0768\u0758"+
+		"\3\2\2\2\u0768\u075f\3\2\2\2\u0769\u010f\3\2\2\2\u076a\u076c\5\u00d0i"+
+		"\2\u076b\u076a\3\2\2\2\u076b\u076c\3\2\2\2\u076c\u076e\3\2\2\2\u076d\u076f"+
+		"\5\u0088E\2\u076e\u076d\3\2\2\2\u076e\u076f\3\2\2\2\u076f\u0770\3\2\2"+
+		"\2\u0770\u0772\5\u00eav\2\u0771\u0773\5\u0132\u009a\2\u0772\u0771\3\2"+
+		"\2\2\u0772\u0773\3\2\2\2\u0773\u0774\3\2\2\2\u0774\u0775\5\u0112\u008a"+
+		"\2\u0775\u0111\3\2\2\2\u0776\u0778\5\u014a\u00a6\2\u0777\u0776\3\2\2\2"+
+		"\u0777\u0778\3\2\2\2\u0778\u0779\3\2\2\2\u0779\u0782\5b\62\2\u077a\u0782"+
+		"\5\u0170\u00b9\2\u077b\u077c\7e\2\2\u077c\u077d\7\30\2\2\u077d\u0782\7"+
+		"\u0080\2\2\u077e\u077f\7e\2\2\u077f\u0780\7\31\2\2\u0780\u0782\7\u0080"+
+		"\2\2\u0781\u0777\3\2\2\2\u0781\u077a\3\2\2\2\u0781\u077b\3\2\2\2\u0781"+
+		"\u077e\3\2\2\2\u0782\u0113\3\2\2\2\u0783\u0789\5\u0116\u008c\2\u0784\u0785"+
+		"\7U\2\2\u0785\u0786\5\"\22\2\u0786\u0787\7V\2\2\u0787\u0789\3\2\2\2\u0788"+
+		"\u0783\3\2\2\2\u0788\u0784\3\2\2\2\u0789\u0115\3\2\2\2\u078a\u078b\7e"+
+		"\2\2\u078b\u078e\5\u0118\u008d\2\u078c\u078e\5\u011c\u008f\2\u078d\u078a"+
+		"\3\2\2\2\u078d\u078c\3\2\2\2\u078e\u0117\3\2\2\2\u078f\u0792\5T+\2\u0790"+
+		"\u0792\5\u011c\u008f\2\u0791\u078f\3\2\2\2\u0791\u0790\3\2\2\2\u0792\u0119"+
+		"\3\2\2\2\u0793\u0794\b\u008e\1\2\u0794\u0796\5\u0118\u008d\2\u0795\u0797"+
+		"\7\u0083\2\2\u0796\u0795\3\2\2\2\u0796\u0797\3\2\2\2\u0797\u07a0\3\2\2"+
+		"\2\u0798\u0799\f\3\2\2\u0799\u079a\7z\2\2\u079a\u079c\5\u0118\u008d\2"+
+		"\u079b\u079d\7\u0083\2\2\u079c\u079b\3\2\2\2\u079c\u079d\3\2\2\2\u079d"+
+		"\u079f\3\2\2\2\u079e\u0798\3\2\2\2\u079f\u07a2\3\2\2\2\u07a0\u079e\3\2"+
+		"\2\2\u07a0\u07a1\3\2\2\2\u07a1\u011b\3\2\2\2\u07a2\u07a0\3\2\2\2\u07a3"+
+		"\u07a4\7Y\2\2\u07a4\u07a6\5\u011a\u008e\2\u07a5\u07a7\7z\2\2\u07a6\u07a5"+
+		"\3\2\2\2\u07a6\u07a7\3\2\2\2\u07a7\u07a8\3\2\2\2\u07a8\u07a9\7Z\2\2\u07a9"+
+		"\u07ad\3\2\2\2\u07aa\u07ab\7Y\2\2\u07ab\u07ad\7Z\2\2\u07ac\u07a3\3\2\2"+
+		"\2\u07ac\u07aa\3\2\2\2\u07ad\u011d\3\2\2\2\u07ae\u07b1\7\u0084\2\2\u07af"+
+		"\u07b1\5\u015e\u00b0\2\u07b0\u07ae\3\2\2\2\u07b0\u07af\3\2\2\2\u07b1\u011f"+
+		"\3\2\2\2\u07b2\u07b3\5\u0122\u0092\2\u07b3\u07b5\7Y\2\2\u07b4\u07b6\5"+
+		"\u012a\u0096\2\u07b5\u07b4\3\2\2\2\u07b5\u07b6\3\2\2\2\u07b6\u07b7\3\2"+
+		"\2\2\u07b7\u07b8\7Z\2\2\u07b8\u0121\3\2\2\2\u07b9\u07bb\5\u0128\u0095"+
+		"\2\u07ba\u07bc\5\u00d0i\2\u07bb\u07ba\3\2\2\2\u07bb\u07bc\3\2\2\2\u07bc"+
+		"\u07bd\3\2\2\2\u07bd\u07bf\5\u0124\u0093\2\u07be\u07c0\5\u0126\u0094\2"+
+		"\u07bf\u07be\3\2\2\2\u07bf\u07c0\3\2\2\2\u07c0\u07c2\3\2\2\2\u07c1\u07c3"+
+		"\5\u0138\u009d\2\u07c2\u07c1\3\2\2\2\u07c2\u07c3\3\2\2\2\u07c3\u07cc\3"+
+		"\2\2\2\u07c4\u07c6\5\u0128\u0095\2\u07c5\u07c7\5\u00d0i\2\u07c6\u07c5"+
 		"\3\2\2\2\u07c6\u07c7\3\2\2\2\u07c7\u07c9\3\2\2\2\u07c8\u07ca\5\u0138\u009d"+
 		"\2\u07c9\u07c8\3\2\2\2\u07c9\u07ca\3\2\2\2\u07ca\u07cc\3\2\2\2\u07cb\u07b9"+
 		"\3\2\2\2\u07cb\u07c4\3\2\2\2\u07cc\u0123\3\2\2\2\u07cd\u07cf\5\f\7\2\u07ce"+
 		"\u07cd\3\2\2\2\u07ce\u07cf\3\2\2\2\u07cf\u07d0\3\2\2\2\u07d0\u07d1\5\u011e"+
-		"\u0090\2\u07d1\u0125\3\2\2\2\u07d2\u07d3\7!\2\2\u07d3\u0127\3\2\2\2\u07d4"+
+		"\u0090\2\u07d1\u0125\3\2\2\2\u07d2\u07d3\7#\2\2\u07d3\u0127\3\2\2\2\u07d4"+
 		"\u07d5\t\b\2\2\u07d5\u0129\3\2\2\2\u07d6\u07d8\5\u012c\u0097\2\u07d7\u07d9"+
 		"\5\u012a\u0096\2\u07d8\u07d7\3\2\2\2\u07d8\u07d9\3\2\2\2\u07d9\u07e0\3"+
-		"\2\2\2\u07da\u07db\5\u0142\u00a2\2\u07db\u07dd\7|\2\2\u07dc\u07de\5\u012a"+
+		"\2\2\2\u07da\u07db\5\u0142\u00a2\2\u07db\u07dd\7~\2\2\u07dc\u07de\5\u012a"+
 		"\u0096\2\u07dd\u07dc\3\2\2\2\u07dd\u07de\3\2\2\2\u07de\u07e0\3\2\2\2\u07df"+
 		"\u07d6\3\2\2\2\u07df\u07da\3\2\2\2\u07e0\u012b\3\2\2\2\u07e1\u07e3\5\u00d0"+
 		"i\2\u07e2\u07e1\3\2\2\2\u07e2\u07e3\3\2\2\2\u07e3\u07e5\3\2\2\2\u07e4"+
 		"\u07e6\5\u0088E\2\u07e5\u07e4\3\2\2\2\u07e5\u07e6\3\2\2\2\u07e6\u07e8"+
 		"\3\2\2\2\u07e7\u07e9\5\u012e\u0098\2\u07e8\u07e7\3\2\2\2\u07e8\u07e9\3"+
-		"\2\2\2\u07e9\u07ea\3\2\2\2\u07ea\u07f2\7~\2\2\u07eb\u07f2\5\u0110\u0089"+
-		"\2\u07ec\u07f2\5\u00c8e\2\u07ed\u07f2\5\u0080A\2\u07ee\u07f2\5\u0156\u00ac"+
-		"\2\u07ef\u07f2\5|?\2\u07f0\u07f2\5\u0082B\2\u07f1\u07e2\3\2\2\2\u07f1"+
-		"\u07eb\3\2\2\2\u07f1\u07ec\3\2\2\2\u07f1\u07ed\3\2\2\2\u07f1\u07ee\3\2"+
-		"\2\2\u07f1\u07ef\3\2\2\2\u07f1\u07f0\3\2\2\2\u07f2\u012d\3\2\2\2\u07f3"+
+		"\2\2\2\u07e9\u07ea\3\2\2\2\u07ea\u07f2\7\u0080\2\2\u07eb\u07f2\5\u0110"+
+		"\u0089\2\u07ec\u07f2\5\u00c8e\2\u07ed\u07f2\5\u0080A\2\u07ee\u07f2\5\u0156"+
+		"\u00ac\2\u07ef\u07f2\5|?\2\u07f0\u07f2\5\u0082B\2\u07f1\u07e2\3\2\2\2"+
+		"\u07f1\u07eb\3\2\2\2\u07f1\u07ec\3\2\2\2\u07f1\u07ed\3\2\2\2\u07f1\u07ee"+
+		"\3\2\2\2\u07f1\u07ef\3\2\2\2\u07f1\u07f0\3\2\2\2\u07f2\u012d\3\2\2\2\u07f3"+
 		"\u07f4\b\u0098\1\2\u07f4\u07f5\5\u0130\u0099\2\u07f5\u07fb\3\2\2\2\u07f6"+
-		"\u07f7\f\3\2\2\u07f7\u07f8\7x\2\2\u07f8\u07fa\5\u0130\u0099\2\u07f9\u07f6"+
+		"\u07f7\f\3\2\2\u07f7\u07f8\7z\2\2\u07f8\u07fa\5\u0130\u0099\2\u07f9\u07f6"+
 		"\3\2\2\2\u07fa\u07fd\3\2\2\2\u07fb\u07f9\3\2\2\2\u07fb\u07fc\3\2\2\2\u07fc"+
 		"\u012f\3\2\2\2\u07fd\u07fb\3\2\2\2\u07fe\u0800\5\u00eav\2\u07ff\u0801"+
 		"\5\u0132\u009a\2\u0800\u07ff\3\2\2\2\u0800\u0801\3\2\2\2\u0801\u0803\3"+
 		"\2\2\2\u0802\u0804\5\u0136\u009c\2\u0803\u0802\3\2\2\2\u0803\u0804\3\2"+
 		"\2\2\u0804\u0812\3\2\2\2\u0805\u0807\5\u00eav\2\u0806\u0808\5\u0116\u008c"+
 		"\2\u0807\u0806\3\2\2\2\u0807\u0808\3\2\2\2\u0808\u0812\3\2\2\2\u0809\u080b"+
-		"\7\u0082\2\2\u080a\u0809\3\2\2\2\u080a\u080b\3\2\2\2\u080b\u080d\3\2\2"+
+		"\7\u0084\2\2\u080a\u0809\3\2\2\2\u080a\u080b\3\2\2\2\u080b\u080d\3\2\2"+
 		"\2\u080c\u080e\5\u00d0i\2\u080d\u080c\3\2\2\2\u080d\u080e\3\2\2\2\u080e"+
-		"\u080f\3\2\2\2\u080f\u0810\7|\2\2\u0810\u0812\5Z.\2\u0811\u07fe\3\2\2"+
+		"\u080f\3\2\2\2\u080f\u0810\7~\2\2\u0810\u0812\5Z.\2\u0811\u07fe\3\2\2"+
 		"\2\u0811\u0805\3\2\2\2\u0811\u080a\3\2\2\2\u0812\u0131\3\2\2\2\u0813\u0814"+
 		"\b\u009a\1\2\u0814\u0815\5\u0134\u009b\2\u0815\u081a\3\2\2\2\u0816\u0817"+
 		"\f\3\2\2\u0817\u0819\5\u0134\u009b\2\u0818\u0816\3\2\2\2\u0819\u081c\3"+
 		"\2\2\2\u081a\u0818\3\2\2\2\u081a\u081b\3\2\2\2\u081b\u0133\3\2\2\2\u081c"+
-		"\u081a\3\2\2\2\u081d\u081e\t\t\2\2\u081e\u0135\3\2\2\2\u081f\u0820\7c"+
-		"\2\2\u0820\u0821\7\u0085\2\2\u0821\u0822\b\u009c\1\2\u0822\u0137\3\2\2"+
-		"\2\u0823\u0824\7|\2\2\u0824\u0825\5\u013a\u009e\2\u0825\u0139\3\2\2\2"+
-		"\u0826\u0827\b\u009e\1\2\u0827\u0829\5\u013c\u009f\2\u0828\u082a\7\u0081"+
+		"\u081a\3\2\2\2\u081d\u081e\t\t\2\2\u081e\u0135\3\2\2\2\u081f\u0820\7e"+
+		"\2\2\u0820\u0821\7\u0087\2\2\u0821\u0822\b\u009c\1\2\u0822\u0137\3\2\2"+
+		"\2\u0823\u0824\7~\2\2\u0824\u0825\5\u013a\u009e\2\u0825\u0139\3\2\2\2"+
+		"\u0826\u0827\b\u009e\1\2\u0827\u0829\5\u013c\u009f\2\u0828\u082a\7\u0083"+
 		"\2\2\u0829\u0828\3\2\2\2\u0829\u082a\3\2\2\2\u082a\u0833\3\2\2\2\u082b"+
-		"\u082c\f\3\2\2\u082c\u082d\7x\2\2\u082d\u082f\5\u013c\u009f\2\u082e\u0830"+
-		"\7\u0081\2\2\u082f\u082e\3\2\2\2\u082f\u0830\3\2\2\2\u0830\u0832\3\2\2"+
+		"\u082c\f\3\2\2\u082c\u082d\7z\2\2\u082d\u082f\5\u013c\u009f\2\u082e\u0830"+
+		"\7\u0083\2\2\u082f\u082e\3\2\2\2\u082f\u0830\3\2\2\2\u0830\u0832\3\2\2"+
 		"\2\u0831\u082b\3\2\2\2\u0832\u0835\3\2\2\2\u0833\u0831\3\2\2\2\u0833\u0834"+
 		"\3\2\2\2\u0834\u013b\3\2\2\2\u0835\u0833\3\2\2\2\u0836\u0879\3\2\2\2\u0837"+
 		"\u0839\5\u00d0i\2\u0838\u0837\3\2\2\2\u0838\u0839\3\2\2\2\u0839\u083b"+
-		"\3\2\2\2\u083a\u083c\7P\2\2\u083b\u083a\3\2\2\2\u083b\u083c\3\2\2\2\u083c"+
+		"\3\2\2\2\u083a\u083c\7R\2\2\u083b\u083a\3\2\2\2\u083b\u083c\3\2\2\2\u083c"+
 		"\u083d\3\2\2\2\u083d\u0879\5\u0140\u00a1\2\u083e\u0840\5\u00d0i\2\u083f"+
-		"\u083e\3\2\2\2\u083f\u0840\3\2\2\2\u0840\u0842\3\2\2\2\u0841\u0843\7P"+
+		"\u083e\3\2\2\2\u083f\u0840\3\2\2\2\u0840\u0842\3\2\2\2\u0841\u0843\7R"+
 		"\2\2\u0842\u0841\3\2\2\2\u0842\u0843\3\2\2\2\u0843\u0844\3\2\2\2\u0844"+
-		"\u0846\7L\2\2\u0845\u0847\5\u0142\u00a2\2\u0846\u0845\3\2\2\2\u0846\u0847"+
+		"\u0846\7N\2\2\u0845\u0847\5\u0142\u00a2\2\u0846\u0845\3\2\2\2\u0846\u0847"+
 		"\3\2\2\2\u0847\u0848\3\2\2\2\u0848\u0879\5\u0140\u00a1\2\u0849\u084b\5"+
 		"\u00d0i\2\u084a\u0849\3\2\2\2\u084a\u084b\3\2\2\2\u084b\u084c\3\2\2\2"+
-		"\u084c\u084e\7L\2\2\u084d\u084f\7P\2\2\u084e\u084d\3\2\2\2\u084e\u084f"+
+		"\u084c\u084e\7N\2\2\u084d\u084f\7R\2\2\u084e\u084d\3\2\2\2\u084e\u084f"+
 		"\3\2\2\2\u084f\u0851\3\2\2\2\u0850\u0852\5\u0142\u00a2\2\u0851\u0850\3"+
 		"\2\2\2\u0851\u0852\3\2\2\2\u0852\u0853\3\2\2\2\u0853\u0879\5\u0140\u00a1"+
 		"\2\u0854\u0856\5\u00d0i\2\u0855\u0854\3\2\2\2\u0855\u0856\3\2\2\2\u0856"+
-		"\u0857\3\2\2\2\u0857\u0859\5\u0142\u00a2\2\u0858\u085a\7P\2\2\u0859\u0858"+
-		"\3\2\2\2\u0859\u085a\3\2\2\2\u085a\u085c\3\2\2\2\u085b\u085d\7L\2\2\u085c"+
+		"\u0857\3\2\2\2\u0857\u0859\5\u0142\u00a2\2\u0858\u085a\7R\2\2\u0859\u0858"+
+		"\3\2\2\2\u0859\u085a\3\2\2\2\u085a\u085c\3\2\2\2\u085b\u085d\7N\2\2\u085c"+
 		"\u085b\3\2\2\2\u085c\u085d\3\2\2\2\u085d\u085e\3\2\2\2\u085e\u085f\5\u0140"+
 		"\u00a1\2\u085f\u0879\3\2\2\2\u0860\u0862\5\u00d0i\2\u0861\u0860\3\2\2"+
 		"\2\u0861\u0862\3\2\2\2\u0862\u0863\3\2\2\2\u0863\u0865\5\u0142\u00a2\2"+
-		"\u0864\u0866\7L\2\2\u0865\u0864\3\2\2\2\u0865\u0866\3\2\2\2\u0866\u0868"+
-		"\3\2\2\2\u0867\u0869\7P\2\2\u0868\u0867\3\2\2\2\u0868\u0869\3\2\2\2\u0869"+
+		"\u0864\u0866\7N\2\2\u0865\u0864\3\2\2\2\u0865\u0866\3\2\2\2\u0866\u0868"+
+		"\3\2\2\2\u0867\u0869\7R\2\2\u0868\u0867\3\2\2\2\u0868\u0869\3\2\2\2\u0869"+
 		"\u086a\3\2\2\2\u086a\u086b\5\u0140\u00a1\2\u086b\u0879\3\2\2\2\u086c\u086e"+
 		"\5\u00d0i\2\u086d\u086c\3\2\2\2\u086d\u086e\3\2\2\2\u086e\u0870\3\2\2"+
-		"\2\u086f\u0871\7P\2\2\u0870\u086f\3\2\2\2\u0870\u0871\3\2\2\2\u0871\u0872"+
-		"\3\2\2\2\u0872\u0874\5\u0142\u00a2\2\u0873\u0875\7L\2\2\u0874\u0873\3"+
+		"\2\u086f\u0871\7R\2\2\u0870\u086f\3\2\2\2\u0870\u0871\3\2\2\2\u0871\u0872"+
+		"\3\2\2\2\u0872\u0874\5\u0142\u00a2\2\u0873\u0875\7N\2\2\u0874\u0873\3"+
 		"\2\2\2\u0874\u0875\3\2\2\2\u0875\u0876\3\2\2\2\u0876\u0877\5\u0140\u00a1"+
 		"\2\u0877\u0879\3\2\2\2\u0878\u0836\3\2\2\2\u0878\u0838\3\2\2\2\u0878\u083f"+
 		"\3\2\2\2\u0878\u084a\3\2\2\2\u0878\u0855\3\2\2\2\u0878\u0861\3\2\2\2\u0878"+
@@ -18428,166 +18808,165 @@ public class CPP14Parser extends Parser {
 		"\2\2\u087b\u087c\3\2\2\2\u087c\u087d\3\2\2\2\u087d\u0880\5\u011e\u0090"+
 		"\2\u087e\u0880\5\u009cO\2\u087f\u087b\3\2\2\2\u087f\u087e\3\2\2\2\u0880"+
 		"\u013f\3\2\2\2\u0881\u0882\5\u013e\u00a0\2\u0882\u0141\3\2\2\2\u0883\u0884"+
-		"\t\n\2\2\u0884\u0143\3\2\2\2\u0885\u0886\7\60\2\2\u0886\u0887\5\u0146"+
+		"\t\n\2\2\u0884\u0143\3\2\2\2\u0885\u0886\7\62\2\2\u0886\u0887\5\u0146"+
 		"\u00a4\2\u0887\u0145\3\2\2\2\u0888\u088a\5\u0094K\2\u0889\u088b\5\u0148"+
 		"\u00a5\2\u088a\u0889\3\2\2\2\u088a\u088b\3\2\2\2\u088b\u0147\3\2\2\2\u088c"+
 		"\u088e\5\u00f4{\2\u088d\u088f\5\u0148\u00a5\2\u088e\u088d\3\2\2\2\u088e"+
-		"\u088f\3\2\2\2\u088f\u0149\3\2\2\2\u0890\u0891\7|\2\2\u0891\u0892\5\u014c"+
+		"\u088f\3\2\2\2\u088f\u0149\3\2\2\2\u0890\u0891\7~\2\2\u0891\u0892\5\u014c"+
 		"\u00a7\2\u0892\u014b\3\2\2\2\u0893\u0895\5\u014e\u00a8\2\u0894\u0896\7"+
-		"\u0081\2\2\u0895\u0894\3\2\2\2\u0895\u0896\3\2\2\2\u0896\u089f\3\2\2\2"+
-		"\u0897\u0899\5\u014e\u00a8\2\u0898\u089a\7\u0081\2\2\u0899\u0898\3\2\2"+
-		"\2\u0899\u089a\3\2\2\2\u089a\u089b\3\2\2\2\u089b\u089c\7x\2\2\u089c\u089d"+
+		"\u0083\2\2\u0895\u0894\3\2\2\2\u0895\u0896\3\2\2\2\u0896\u089f\3\2\2\2"+
+		"\u0897\u0899\5\u014e\u00a8\2\u0898\u089a\7\u0083\2\2\u0899\u0898\3\2\2"+
+		"\2\u0899\u089a\3\2\2\2\u089a\u089b\3\2\2\2\u089b\u089c\7z\2\2\u089c\u089d"+
 		"\5\u014c\u00a7\2\u089d\u089f\3\2\2\2\u089e\u0893\3\2\2\2\u089e\u0897\3"+
-		"\2\2\2\u089f\u014d\3\2\2\2\u08a0\u08a1\5\u0150\u00a9\2\u08a1\u08a3\7S"+
+		"\2\2\2\u089f\u014d\3\2\2\2\u08a0\u08a1\5\u0150\u00a9\2\u08a1\u08a3\7U"+
 		"\2\2\u08a2\u08a4\5\"\22\2\u08a3\u08a2\3\2\2\2\u08a3\u08a4\3\2\2\2\u08a4"+
-		"\u08a5\3\2\2\2\u08a5\u08a6\7T\2\2\u08a6\u08ab\3\2\2\2\u08a7\u08a8\5\u0150"+
+		"\u08a5\3\2\2\2\u08a5\u08a6\7V\2\2\u08a6\u08ab\3\2\2\2\u08a7\u08a8\5\u0150"+
 		"\u00a9\2\u08a8\u08a9\5\u011c\u008f\2\u08a9\u08ab\3\2\2\2\u08aa\u08a0\3"+
 		"\2\2\2\u08aa\u08a7\3\2\2\2\u08ab\u014f\3\2\2\2\u08ac\u08af\5\u013e\u00a0"+
-		"\2\u08ad\u08af\7\u0082\2\2\u08ae\u08ac\3\2\2\2\u08ae\u08ad\3\2\2\2\u08af"+
-		"\u0151\3\2\2\2\u08b0\u08b1\7\60\2\2\u08b1\u08b2\5\u0186\u00c4\2\u08b2"+
-		"\u0153\3\2\2\2\u08b3\u08b4\7\60\2\2\u08b4\u08b5\7\u008b\2\2\u08b5\u08b9"+
-		"\7\u0082\2\2\u08b6\u08b7\7\60\2\2\u08b7\u08b9\7\u008e\2\2\u08b8\u08b3"+
-		"\3\2\2\2\u08b8\u08b6\3\2\2\2\u08b9\u0155\3\2\2\2\u08ba\u08bb\7@\2\2\u08bb"+
-		"\u08bc\7d\2\2\u08bc\u08bd\5\u0158\u00ad\2\u08bd\u08be\7e\2\2\u08be\u08bf"+
+		"\2\u08ad\u08af\7\u0084\2\2\u08ae\u08ac\3\2\2\2\u08ae\u08ad\3\2\2\2\u08af"+
+		"\u0151\3\2\2\2\u08b0\u08b1\7\62\2\2\u08b1\u08b2\5\u0186\u00c4\2\u08b2"+
+		"\u0153\3\2\2\2\u08b3\u08b4\7\62\2\2\u08b4\u08b5\7\u008d\2\2\u08b5\u08b9"+
+		"\7\u0084\2\2\u08b6\u08b7\7\62\2\2\u08b7\u08b9\7\u0090\2\2\u08b8\u08b3"+
+		"\3\2\2\2\u08b8\u08b6\3\2\2\2\u08b9\u0155\3\2\2\2\u08ba\u08bb\7B\2\2\u08bb"+
+		"\u08bc\7f\2\2\u08bc\u08bd\5\u0158\u00ad\2\u08bd\u08be\7g\2\2\u08be\u08bf"+
 		"\5x=\2\u08bf\u0157\3\2\2\2\u08c0\u08c1\b\u00ad\1\2\u08c1\u08c2\5\u015a"+
-		"\u00ae\2\u08c2\u08c8\3\2\2\2\u08c3\u08c4\f\3\2\2\u08c4\u08c5\7x\2\2\u08c5"+
+		"\u00ae\2\u08c2\u08c8\3\2\2\2\u08c3\u08c4\f\3\2\2\u08c4\u08c5\7z\2\2\u08c5"+
 		"\u08c7\5\u015a\u00ae\2\u08c6\u08c3\3\2\2\2\u08c7\u08ca\3\2\2\2\u08c8\u08c6"+
 		"\3\2\2\2\u08c8\u08c9\3\2\2\2\u08c9\u0159\3\2\2\2\u08ca\u08c8\3\2\2\2\u08cb"+
 		"\u08ce\5\u015c\u00af\2\u08cc\u08ce\5\u010e\u0088\2\u08cd\u08cb\3\2\2\2"+
-		"\u08cd\u08cc\3\2\2\2\u08ce\u015b\3\2\2\2\u08cf\u08d1\7\20\2\2\u08d0\u08d2"+
-		"\7\u0081\2\2\u08d1\u08d0\3\2\2\2\u08d1\u08d2\3\2\2\2\u08d2\u08d4\3\2\2"+
-		"\2\u08d3\u08d5\7\u0082\2\2\u08d4\u08d3\3\2\2\2\u08d4\u08d5\3\2\2\2\u08d5"+
-		"\u0900\3\2\2\2\u08d6\u08d8\7\20\2\2\u08d7\u08d9\7\u0082\2\2\u08d8\u08d7"+
-		"\3\2\2\2\u08d8\u08d9\3\2\2\2\u08d9\u08da\3\2\2\2\u08da\u08db\7c\2\2\u08db"+
-		"\u0900\5\u00fe\u0080\2\u08dc\u08de\7H\2\2\u08dd\u08df\7\u0081\2\2\u08de"+
-		"\u08dd\3\2\2\2\u08de\u08df\3\2\2\2\u08df\u08e1\3\2\2\2\u08e0\u08e2\7\u0082"+
+		"\u08cd\u08cc\3\2\2\2\u08ce\u015b\3\2\2\2\u08cf\u08d1\7\22\2\2\u08d0\u08d2"+
+		"\7\u0083\2\2\u08d1\u08d0\3\2\2\2\u08d1\u08d2\3\2\2\2\u08d2\u08d4\3\2\2"+
+		"\2\u08d3\u08d5\7\u0084\2\2\u08d4\u08d3\3\2\2\2\u08d4\u08d5\3\2\2\2\u08d5"+
+		"\u0900\3\2\2\2\u08d6\u08d8\7\22\2\2\u08d7\u08d9\7\u0084\2\2\u08d8\u08d7"+
+		"\3\2\2\2\u08d8\u08d9\3\2\2\2\u08d9\u08da\3\2\2\2\u08da\u08db\7e\2\2\u08db"+
+		"\u0900\5\u00fe\u0080\2\u08dc\u08de\7J\2\2\u08dd\u08df\7\u0083\2\2\u08de"+
+		"\u08dd\3\2\2\2\u08de\u08df\3\2\2\2\u08df\u08e1\3\2\2\2\u08e0\u08e2\7\u0084"+
 		"\2\2\u08e1\u08e0\3\2\2\2\u08e1\u08e2\3\2\2\2\u08e2\u0900\3\2\2\2\u08e3"+
-		"\u08e5\7H\2\2\u08e4\u08e6\7\u0082\2\2\u08e5\u08e4\3\2\2\2\u08e5\u08e6"+
-		"\3\2\2\2\u08e6\u08e7\3\2\2\2\u08e7\u08e8\7c\2\2\u08e8\u0900\5\u00fe\u0080"+
-		"\2\u08e9\u08ea\7@\2\2\u08ea\u08eb\7d\2\2\u08eb\u08ec\5\u0158\u00ad\2\u08ec"+
-		"\u08ed\7e\2\2\u08ed\u08ef\7\20\2\2\u08ee\u08f0\7\u0081\2\2\u08ef\u08ee"+
-		"\3\2\2\2\u08ef\u08f0\3\2\2\2\u08f0\u08f2\3\2\2\2\u08f1\u08f3\7\u0082\2"+
+		"\u08e5\7J\2\2\u08e4\u08e6\7\u0084\2\2\u08e5\u08e4\3\2\2\2\u08e5\u08e6"+
+		"\3\2\2\2\u08e6\u08e7\3\2\2\2\u08e7\u08e8\7e\2\2\u08e8\u0900\5\u00fe\u0080"+
+		"\2\u08e9\u08ea\7B\2\2\u08ea\u08eb\7f\2\2\u08eb\u08ec\5\u0158\u00ad\2\u08ec"+
+		"\u08ed\7g\2\2\u08ed\u08ef\7\22\2\2\u08ee\u08f0\7\u0083\2\2\u08ef\u08ee"+
+		"\3\2\2\2\u08ef\u08f0\3\2\2\2\u08f0\u08f2\3\2\2\2\u08f1\u08f3\7\u0084\2"+
 		"\2\u08f2\u08f1\3\2\2\2\u08f2\u08f3\3\2\2\2\u08f3\u0900\3\2\2\2\u08f4\u08f5"+
-		"\7@\2\2\u08f5\u08f6\7d\2\2\u08f6\u08f7\5\u0158\u00ad\2\u08f7\u08f8\7e"+
-		"\2\2\u08f8\u08fa\7\20\2\2\u08f9\u08fb\7\u0082\2\2\u08fa\u08f9\3\2\2\2"+
-		"\u08fa\u08fb\3\2\2\2\u08fb\u08fc\3\2\2\2\u08fc\u08fd\7c\2\2\u08fd\u08fe"+
+		"\7B\2\2\u08f5\u08f6\7f\2\2\u08f6\u08f7\5\u0158\u00ad\2\u08f7\u08f8\7g"+
+		"\2\2\u08f8\u08fa\7\22\2\2\u08f9\u08fb\7\u0084\2\2\u08fa\u08f9\3\2\2\2"+
+		"\u08fa\u08fb\3\2\2\2\u08fb\u08fc\3\2\2\2\u08fc\u08fd\7e\2\2\u08fd\u08fe"+
 		"\5\6\4\2\u08fe\u0900\3\2\2\2\u08ff\u08cf\3\2\2\2\u08ff\u08d6\3\2\2\2\u08ff"+
 		"\u08dc\3\2\2\2\u08ff\u08e3\3\2\2\2\u08ff\u08e9\3\2\2\2\u08ff\u08f4\3\2"+
-		"\2\2\u0900\u015d\3\2\2\2\u0901\u0902\5\u0162\u00b2\2\u0902\u0904\7d\2"+
+		"\2\2\u0900\u015d\3\2\2\2\u0901\u0902\5\u0162\u00b2\2\u0902\u0904\7f\2"+
 		"\2\u0903\u0905\5\u0164\u00b3\2\u0904\u0903\3\2\2\2\u0904\u0905\3\2\2\2"+
-		"\u0905\u0906\3\2\2\2\u0906\u0907\7e\2\2\u0907\u015f\3\2\2\2\u0908\u0918"+
-		"\5\u015e\u00b0\2\u0909\u090a\5\u0152\u00aa\2\u090a\u090c\7d\2\2\u090b"+
+		"\u0905\u0906\3\2\2\2\u0906\u0907\7g\2\2\u0907\u015f\3\2\2\2\u0908\u0918"+
+		"\5\u015e\u00b0\2\u0909\u090a\5\u0152\u00aa\2\u090a\u090c\7f\2\2\u090b"+
 		"\u090d\5\u0164\u00b3\2\u090c\u090b\3\2\2\2\u090c\u090d\3\2\2\2\u090d\u090e"+
-		"\3\2\2\2\u090e\u090f\7e\2\2\u090f\u0918\3\2\2\2\u0910\u0911\5\u0154\u00ab"+
-		"\2\u0911\u0913\7d\2\2\u0912\u0914\5\u0164\u00b3\2\u0913\u0912\3\2\2\2"+
-		"\u0913\u0914\3\2\2\2\u0914\u0915\3\2\2\2\u0915\u0916\7e\2\2\u0916\u0918"+
+		"\3\2\2\2\u090e\u090f\7g\2\2\u090f\u0918\3\2\2\2\u0910\u0911\5\u0154\u00ab"+
+		"\2\u0911\u0913\7f\2\2\u0912\u0914\5\u0164\u00b3\2\u0913\u0912\3\2\2\2"+
+		"\u0913\u0914\3\2\2\2\u0914\u0915\3\2\2\2\u0915\u0916\7g\2\2\u0916\u0918"+
 		"\3\2\2\2\u0917\u0908\3\2\2\2\u0917\u0909\3\2\2\2\u0917\u0910\3\2\2\2\u0918"+
-		"\u0161\3\2\2\2\u0919\u091a\7\u0082\2\2\u091a\u0163\3\2\2\2\u091b\u091c"+
-		"\b\u00b3\1\2\u091c\u091e\5\u0166\u00b4\2\u091d\u091f\7\u0081\2\2\u091e"+
+		"\u0161\3\2\2\2\u0919\u091a\7\u0084\2\2\u091a\u0163\3\2\2\2\u091b\u091c"+
+		"\b\u00b3\1\2\u091c\u091e\5\u0166\u00b4\2\u091d\u091f\7\u0083\2\2\u091e"+
 		"\u091d\3\2\2\2\u091e\u091f\3\2\2\2\u091f\u0928\3\2\2\2\u0920\u0921\f\3"+
-		"\2\2\u0921\u0922\7x\2\2\u0922\u0924\5\u0166\u00b4\2\u0923\u0925\7\u0081"+
+		"\2\2\u0921\u0922\7z\2\2\u0922\u0924\5\u0166\u00b4\2\u0923\u0925\7\u0083"+
 		"\2\2\u0924\u0923\3\2\2\2\u0924\u0925\3\2\2\2\u0925\u0927\3\2\2\2\u0926"+
 		"\u0920\3\2\2\2\u0927\u092a\3\2\2\2\u0928\u0926\3\2\2\2\u0928\u0929\3\2"+
 		"\2\2\u0929\u0165\3\2\2\2\u092a\u0928\3\2\2\2\u092b\u092f\5\u00fe\u0080"+
 		"\2\u092c\u092f\5Z.\2\u092d\u092f\5\6\4\2\u092e\u092b\3\2\2\2\u092e\u092c"+
-		"\3\2\2\2\u092e\u092d\3\2\2\2\u092f\u0167\3\2\2\2\u0930\u0931\7H\2\2\u0931"+
-		"\u0932\5\f\7\2\u0932\u0933\7\u0082\2\2\u0933\u093c\3\2\2\2\u0934\u0935"+
-		"\7H\2\2\u0935\u0937\5\f\7\2\u0936\u0938\7@\2\2\u0937\u0936\3\2\2\2\u0937"+
+		"\3\2\2\2\u092e\u092d\3\2\2\2\u092f\u0167\3\2\2\2\u0930\u0931\7J\2\2\u0931"+
+		"\u0932\5\f\7\2\u0932\u0933\7\u0084\2\2\u0933\u093c\3\2\2\2\u0934\u0935"+
+		"\7J\2\2\u0935\u0937\5\f\7\2\u0936\u0938\7B\2\2\u0937\u0936\3\2\2\2\u0937"+
 		"\u0938\3\2\2\2\u0938\u0939\3\2\2\2\u0939\u093a\5\u015e\u00b0\2\u093a\u093c"+
 		"\3\2\2\2\u093b\u0930\3\2\2\2\u093b\u0934\3\2\2\2\u093c\u0169\3\2\2\2\u093d"+
-		"\u093f\7\37\2\2\u093e\u093d\3\2\2\2\u093e\u093f\3\2\2\2\u093f\u0940\3"+
-		"\2\2\2\u0940\u0941\7@\2\2\u0941\u0942\5x=\2\u0942\u016b\3\2\2\2\u0943"+
-		"\u0944\7@\2\2\u0944\u0945\7d\2\2\u0945\u0946\7e\2\2\u0946\u0947\5x=\2"+
-		"\u0947\u016d\3\2\2\2\u0948\u0949\7E\2\2\u0949\u094a\5b\62\2\u094a\u094b"+
-		"\5\u0172\u00ba\2\u094b\u016f\3\2\2\2\u094c\u094e\7E\2\2\u094d\u094f\5"+
-		"\u014a\u00a6\2\u094e\u094d\3\2\2\2\u094e\u094f\3\2\2\2\u094f\u0950\3\2"+
-		"\2\2\u0950\u0951\5b\62\2\u0951\u0952\5\u0172\u00ba\2\u0952\u0171\3\2\2"+
-		"\2\u0953\u0955\5\u0174\u00bb\2\u0954\u0956\5\u0172\u00ba\2\u0955\u0954"+
-		"\3\2\2\2\u0955\u0956\3\2\2\2\u0956\u0173\3\2\2\2\u0957\u0958\7\f\2\2\u0958"+
-		"\u0959\7S\2\2\u0959\u095a\5\u0176\u00bc\2\u095a\u095b\7T\2\2\u095b\u095c"+
-		"\5b\62\2\u095c\u0175\3\2\2\2\u095d\u095f\5\u00d0i\2\u095e\u095d\3\2\2"+
-		"\2\u095e\u095f\3\2\2\2\u095f\u0960\3\2\2\2\u0960\u0961\5\u0094K\2\u0961"+
-		"\u0962\5\u00eav\2\u0962\u096c\3\2\2\2\u0963\u0965\5\u00d0i\2\u0964\u0963"+
-		"\3\2\2\2\u0964\u0965\3\2\2\2\u0965\u0966\3\2\2\2\u0966\u0968\5\u0094K"+
-		"\2\u0967\u0969\5\u0100\u0081\2\u0968\u0967\3\2\2\2\u0968\u0969\3\2\2\2"+
-		"\u0969\u096c\3\2\2\2\u096a\u096c\7\u0081\2\2\u096b\u095e\3\2\2\2\u096b"+
-		"\u0964\3\2\2\2\u096b\u096a\3\2\2\2\u096c\u0177\3\2\2\2\u096d\u096f\7C"+
-		"\2\2\u096e\u0970\5T+\2\u096f\u096e\3\2\2\2\u096f\u0970\3\2\2\2\u0970\u0179"+
-		"\3\2\2\2\u0971\u0974\5\u017c\u00bf\2\u0972\u0974\5\u0180\u00c1\2\u0973"+
-		"\u0971\3\2\2\2\u0973\u0972\3\2\2\2\u0974\u017b\3\2\2\2\u0975\u0976\7C"+
-		"\2\2\u0976\u0978\7S\2\2\u0977\u0979\5\u017e\u00c0\2\u0978\u0977\3\2\2"+
-		"\2\u0978\u0979\3\2\2\2\u0979\u097a\3\2\2\2\u097a\u097b\7T\2\2\u097b\u017d"+
-		"\3\2\2\2\u097c\u097d\b\u00c0\1\2\u097d\u097f\5\u00fe\u0080\2\u097e\u0980"+
-		"\7\u0081\2\2\u097f\u097e\3\2\2\2\u097f\u0980\3\2";
+		"\u093f\7!\2\2\u093e\u093d\3\2\2\2\u093e\u093f\3\2\2\2\u093f\u0940\3\2"+
+		"\2\2\u0940\u0941\7B\2\2\u0941\u0942\5x=\2\u0942\u016b\3\2\2\2\u0943\u0944"+
+		"\7B\2\2\u0944\u0945\7f\2\2\u0945\u0946\7g\2\2\u0946\u0947\5x=\2\u0947"+
+		"\u016d\3\2\2\2\u0948\u0949\7G\2\2\u0949\u094a\5b\62\2\u094a\u094b\5\u0172"+
+		"\u00ba\2\u094b\u016f\3\2\2\2\u094c\u094e\7G\2\2\u094d\u094f\5\u014a\u00a6"+
+		"\2\u094e\u094d\3\2\2\2\u094e\u094f\3\2\2\2\u094f\u0950\3\2\2\2\u0950\u0951"+
+		"\5b\62\2\u0951\u0952\5\u0172\u00ba\2\u0952\u0171\3\2\2\2\u0953\u0955\5"+
+		"\u0174\u00bb\2\u0954\u0956\5\u0172\u00ba\2\u0955\u0954\3\2\2\2\u0955\u0956"+
+		"\3\2\2\2\u0956\u0173\3\2\2\2\u0957\u0958\7\16\2\2\u0958\u0959\7U\2\2\u0959"+
+		"\u095a\5\u0176\u00bc\2\u095a\u095b\7V\2\2\u095b\u095c\5b\62\2\u095c\u0175"+
+		"\3\2\2\2\u095d\u095f\5\u00d0i\2\u095e\u095d\3\2\2\2\u095e\u095f\3\2\2"+
+		"\2\u095f\u0960\3\2\2\2\u0960\u0961\5\u0094K\2\u0961\u0962\5\u00eav\2\u0962"+
+		"\u096c\3\2\2\2\u0963\u0965\5\u00d0i\2\u0964\u0963\3\2\2\2\u0964\u0965"+
+		"\3\2\2\2\u0965\u0966\3\2\2\2\u0966\u0968\5\u0094K\2\u0967\u0969\5\u0100"+
+		"\u0081\2\u0968\u0967\3\2\2\2\u0968\u0969\3\2\2\2\u0969\u096c\3\2\2\2\u096a"+
+		"\u096c\7\u0083\2\2\u096b\u095e\3\2\2\2\u096b\u0964\3\2\2\2\u096b\u096a"+
+		"\3\2\2\2\u096c\u0177\3\2\2\2\u096d\u096f\7E\2\2\u096e\u0970\5T+\2\u096f"+
+		"\u096e\3\2\2\2\u096f\u0970\3\2\2\2\u0970\u0179\3\2\2\2\u0971\u0974\5\u017c"+
+		"\u00bf\2\u0972\u0974\5\u0180\u00c1\2\u0973\u0971\3\2\2\2\u0973\u0972\3"+
+		"\2\2\2\u0974\u017b\3\2\2\2\u0975\u0976\7E\2\2\u0976\u0978\7U\2\2\u0977"+
+		"\u0979\5\u017e\u00c0\2\u0978\u0977\3\2\2\2\u0978\u0979\3\2\2\2\u0979\u097a"+
+		"\3\2\2\2\u097a\u097b\7V\2\2\u097b\u017d\3\2\2\2\u097c\u097d\b\u00c0\1"+
+		"\2\u097d\u097f\5\u00fe\u0080\2\u097e\u0980\7\u0083\2\2\u097f\u097e\3\2"+
+		"\2\2\u097f\u0980\3\2\2\2\u0980\u0989\3\2";
 	private static final String _serializedATNSegment1 =
-		"\2\2\u0980\u0989\3\2\2\2\u0981\u0982\f\3\2\2\u0982\u0983\7x\2\2\u0983"+
-		"\u0985\5\u00fe\u0080\2\u0984\u0986\7\u0081\2\2\u0985\u0984\3\2\2\2\u0985"+
-		"\u0986\3\2\2\2\u0986\u0988\3\2\2\2\u0987\u0981\3\2\2\2\u0988\u098b\3\2"+
-		"\2\2\u0989\u0987\3\2\2\2\u0989\u098a\3\2\2\2\u098a\u017f\3\2\2\2\u098b"+
-		"\u0989\3\2\2\2\u098c\u098d\7-\2\2\u098d\u098e\7S\2\2\u098e\u098f\5Z.\2"+
-		"\u098f\u0990\7T\2\2\u0990\u0993\3\2\2\2\u0991\u0993\7-\2\2\u0992\u098c"+
-		"\3\2\2\2\u0992\u0991\3\2\2\2\u0993\u0181\3\2\2\2\u0994\u0995\7e\2\2\u0995"+
-		"\u0996\7e\2\2\u0996\u0183\3\2\2\2\u0997\u0998\7e\2\2\u0998\u0999\7e\2"+
-		"\2\u0999\u099a\7c\2\2\u099a\u0185\3\2\2\2\u099b\u09cc\7,\2\2\u099c\u09cc"+
-		"\7\27\2\2\u099d\u099e\7,\2\2\u099e\u099f\7U\2\2\u099f\u09cc\7V\2\2\u09a0"+
-		"\u09a1\7\27\2\2\u09a1\u09a2\7U\2\2\u09a2\u09cc\7V\2\2\u09a3\u09cc\7Y\2"+
-		"\2\u09a4\u09cc\7Z\2\2\u09a5\u09cc\7[\2\2\u09a6\u09cc\7\\\2\2\u09a7\u09cc"+
-		"\7]\2\2\u09a8\u09cc\7^\2\2\u09a9\u09cc\7_\2\2\u09aa\u09cc\7`\2\2\u09ab"+
-		"\u09cc\7a\2\2\u09ac\u09cc\7b\2\2\u09ad\u09cc\7c\2\2\u09ae\u09cc\7d\2\2"+
-		"\u09af\u09cc\7e\2\2\u09b0\u09cc\7f\2\2\u09b1\u09cc\7g\2\2\u09b2\u09cc"+
-		"\7h\2\2\u09b3\u09cc\7i\2\2\u09b4\u09cc\7j\2\2\u09b5\u09cc\7k\2\2\u09b6"+
-		"\u09cc\7l\2\2\u09b7\u09cc\7m\2\2\u09b8\u09cc\7n\2\2\u09b9\u09cc\5\u0182"+
-		"\u00c2\2\u09ba\u09cc\5\u0184\u00c3\2\u09bb\u09cc\7o\2\2\u09bc\u09cc\7"+
-		"p\2\2\u09bd\u09cc\7q\2\2\u09be\u09cc\7r\2\2\u09bf\u09cc\7s\2\2\u09c0\u09cc"+
-		"\7t\2\2\u09c1\u09cc\7u\2\2\u09c2\u09cc\7v\2\2\u09c3\u09cc\7w\2\2\u09c4"+
-		"\u09cc\7x\2\2\u09c5\u09cc\7y\2\2\u09c6\u09cc\7z\2\2\u09c7\u09c8\7S\2\2"+
-		"\u09c8\u09cc\7T\2\2\u09c9\u09ca\7U\2\2\u09ca\u09cc\7V\2\2\u09cb\u099b"+
-		"\3\2\2\2\u09cb\u099c\3\2\2\2\u09cb\u099d\3\2\2\2\u09cb\u09a0\3\2\2\2\u09cb"+
-		"\u09a3\3\2\2\2\u09cb\u09a4\3\2\2\2\u09cb\u09a5\3\2\2\2\u09cb\u09a6\3\2"+
-		"\2\2\u09cb\u09a7\3\2\2\2\u09cb\u09a8\3\2\2\2\u09cb\u09a9\3\2\2\2\u09cb"+
-		"\u09aa\3\2\2\2\u09cb\u09ab\3\2\2\2\u09cb\u09ac\3\2\2\2\u09cb\u09ad\3\2"+
-		"\2\2\u09cb\u09ae\3\2\2\2\u09cb\u09af\3\2\2\2\u09cb\u09b0\3\2\2\2\u09cb"+
-		"\u09b1\3\2\2\2\u09cb\u09b2\3\2\2\2\u09cb\u09b3\3\2\2\2\u09cb\u09b4\3\2"+
-		"\2\2\u09cb\u09b5\3\2\2\2\u09cb\u09b6\3\2\2\2\u09cb\u09b7\3\2\2\2\u09cb"+
-		"\u09b8\3\2\2\2\u09cb\u09b9\3\2\2\2\u09cb\u09ba\3\2\2\2\u09cb\u09bb\3\2"+
-		"\2\2\u09cb\u09bc\3\2\2\2\u09cb\u09bd\3\2\2\2\u09cb\u09be\3\2\2\2\u09cb"+
-		"\u09bf\3\2\2\2\u09cb\u09c0\3\2\2\2\u09cb\u09c1\3\2\2\2\u09cb\u09c2\3\2"+
-		"\2\2\u09cb\u09c3\3\2\2\2\u09cb\u09c4\3\2\2\2\u09cb\u09c5\3\2\2\2\u09cb"+
-		"\u09c6\3\2\2\2\u09cb\u09c7\3\2\2\2\u09cb\u09c9\3\2\2\2\u09cc\u0187\3\2"+
-		"\2\2\u09cd\u09d5\7\u0083\2\2\u09ce\u09d5\7\u0089\2\2\u09cf\u09d5\7\u008a"+
-		"\2\2\u09d0\u09d5\7\u008b\2\2\u09d1\u09d5\5\u018a\u00c6\2\u09d2\u09d5\5"+
-		"\u018c\u00c7\2\u09d3\u09d5\5\u018e\u00c8\2\u09d4\u09cd\3\2\2\2\u09d4\u09ce"+
-		"\3\2\2\2\u09d4\u09cf\3\2\2\2\u09d4\u09d0\3\2\2\2\u09d4\u09d1\3\2\2\2\u09d4"+
-		"\u09d2\3\2\2\2\u09d4\u09d3\3\2\2\2\u09d5\u0189\3\2\2\2\u09d6\u09d7\t\13"+
-		"\2\2\u09d7\u018b\3\2\2\2\u09d8\u09d9\7.\2\2\u09d9\u018d\3\2\2\2\u09da"+
-		"\u09db\t\f\2\2\u09db\u018f\3\2\2\2\u0149\u0191\u019d\u01a1\u01ac\u01b0"+
-		"\u01bf\u01c6\u01cb\u01cd\u01d2\u01d8\u01e2\u01e9\u01ef\u01f3\u01f8\u01fe"+
-		"\u0205\u020b\u020e\u0211\u0214\u021b\u0222\u0260\u026f\u0275\u027b\u0288"+
-		"\u028a\u0290\u029f\u02a5\u02c3\u02c8\u02cc\u02d0\u02d3\u02d7\u02dd\u02df"+
-		"\u02e7\u02eb\u02ee\u02f5\u02fc\u0300\u0305\u0309\u030c\u0311\u0317\u0324"+
-		"\u032f\u0331\u0340\u0342\u034e\u0350\u035d\u035f\u0371\u0373\u037f\u0381"+
-		"\u038c\u0397\u03a2\u03ad\u03b8\u03c2\u03ca\u03d7\u03e1\u03e8\u03ec\u03f0"+
-		"\u03f4\u03f8\u03fd\u0400\u0403\u0409\u0411\u0416\u0419\u041f\u042a\u0441"+
-		"\u0445\u044d\u0453\u0467\u046b\u0478\u047c\u047f\u0486\u048e\u0498\u04a3"+
-		"\u04af\u04b9\u04be\u04c5\u04c8\u04cd\u04d2\u04e7\u04eb\u04f0\u04fb\u0501"+
-		"\u0505\u050a\u050e\u0513\u0516\u052c\u0532\u053d\u0541\u0544\u054e\u0554"+
-		"\u0557\u055e\u0568\u056c\u056f\u0572\u0576\u057b\u057d\u0581\u0585\u058e"+
-		"\u059b\u05a3\u05a9\u05af\u05b3\u05b6\u05bf\u05c8\u05d0\u05db\u05e1\u05ec"+
-		"\u05ef\u05f4\u0603\u0609\u0612\u061c\u0622\u062a\u062e\u0632\u0637\u063c"+
-		"\u0643\u0645\u064a\u064e\u065c\u0662\u0671\u067b\u0680\u0687\u068d\u0692"+
-		"\u0698\u069f\u06a3\u06a5\u06a7\u06ae\u06b1\u06b4\u06b7\u06bc\u06c0\u06c3"+
-		"\u06c7\u06cb\u06d0\u06d3\u06d5\u06d9\u06e0\u06e6\u06ea\u06f0\u06f5\u06f7"+
-		"\u06fd\u0701\u0707\u070e\u0712\u0714\u0716\u071d\u0727\u072b\u072d\u072f"+
-		"\u0733\u0736\u073c\u0746\u074a\u0750\u0758\u075c\u075f\u0763\u0768\u076b"+
-		"\u076e\u0772\u0777\u0781\u0788\u078d\u0791\u0796\u079c\u07a0\u07a6\u07ac"+
-		"\u07b0\u07b5\u07bb\u07bf\u07c2\u07c6\u07c9\u07cb\u07ce\u07d8\u07dd\u07df"+
-		"\u07e2\u07e5\u07e8\u07f1\u07fb\u0800\u0803\u0807\u080a\u080d\u0811\u081a"+
-		"\u0829\u082f\u0833\u0838\u083b\u083f\u0842\u0846\u084a\u084e\u0851\u0855"+
-		"\u0859\u085c\u0861\u0865\u0868\u086d\u0870\u0874\u0878\u087b\u087f\u088a"+
-		"\u088e\u0895\u0899\u089e\u08a3\u08aa\u08ae\u08b8\u08c8\u08cd\u08d1\u08d4"+
-		"\u08d8\u08de\u08e1\u08e5\u08ef\u08f2\u08fa\u08ff\u0904\u090c\u0913\u0917"+
-		"\u091e\u0924\u0928\u092e\u0937\u093b\u093e\u094e\u0955\u095e\u0964\u0968"+
-		"\u096b\u096f\u0973\u0978\u097f\u0985\u0989\u0992\u09cb\u09d4";
+		"\2\2\u0981\u0982\f\3\2\2\u0982\u0983\7z\2\2\u0983\u0985\5\u00fe\u0080"+
+		"\2\u0984\u0986\7\u0083\2\2\u0985\u0984\3\2\2\2\u0985\u0986\3\2\2\2\u0986"+
+		"\u0988\3\2\2\2\u0987\u0981\3\2\2\2\u0988\u098b\3\2\2\2\u0989\u0987\3\2"+
+		"\2\2\u0989\u098a\3\2\2\2\u098a\u017f\3\2\2\2\u098b\u0989\3\2\2\2\u098c"+
+		"\u098d\7/\2\2\u098d\u098e\7U\2\2\u098e\u098f\5Z.\2\u098f\u0990\7V\2\2"+
+		"\u0990\u0993\3\2\2\2\u0991\u0993\7/\2\2\u0992\u098c\3\2\2\2\u0992\u0991"+
+		"\3\2\2\2\u0993\u0181\3\2\2\2\u0994\u0995\7\3\2\2\u0995\u0183\3\2\2\2\u0996"+
+		"\u0997\7\4\2\2\u0997\u0185\3\2\2\2\u0998\u09c9\7.\2\2\u0999\u09c9\7\31"+
+		"\2\2\u099a\u099b\7.\2\2\u099b\u099c\7W\2\2\u099c\u09c9\7X\2\2\u099d\u099e"+
+		"\7\31\2\2\u099e\u099f\7W\2\2\u099f\u09c9\7X\2\2\u09a0\u09c9\7[\2\2\u09a1"+
+		"\u09c9\7\\\2\2\u09a2\u09c9\7]\2\2\u09a3\u09c9\7^\2\2\u09a4\u09c9\7_\2"+
+		"\2\u09a5\u09c9\7`\2\2\u09a6\u09c9\7a\2\2\u09a7\u09c9\7b\2\2\u09a8\u09c9"+
+		"\7c\2\2\u09a9\u09c9\7d\2\2\u09aa\u09c9\7e\2\2\u09ab\u09c9\7f\2\2\u09ac"+
+		"\u09c9\7g\2\2\u09ad\u09c9\7h\2\2\u09ae\u09c9\7i\2\2\u09af\u09c9\7j\2\2"+
+		"\u09b0\u09c9\7k\2\2\u09b1\u09c9\7l\2\2\u09b2\u09c9\7m\2\2\u09b3\u09c9"+
+		"\7n\2\2\u09b4\u09c9\7o\2\2\u09b5\u09c9\7p\2\2\u09b6\u09c9\5\u0182\u00c2"+
+		"\2\u09b7\u09c9\5\u0184\u00c3\2\u09b8\u09c9\7q\2\2\u09b9\u09c9\7r\2\2\u09ba"+
+		"\u09c9\7s\2\2\u09bb\u09c9\7t\2\2\u09bc\u09c9\7u\2\2\u09bd\u09c9\7v\2\2"+
+		"\u09be\u09c9\7w\2\2\u09bf\u09c9\7x\2\2\u09c0\u09c9\7y\2\2\u09c1\u09c9"+
+		"\7z\2\2\u09c2\u09c9\7{\2\2\u09c3\u09c9\7|\2\2\u09c4\u09c5\7U\2\2\u09c5"+
+		"\u09c9\7V\2\2\u09c6\u09c7\7W\2\2\u09c7\u09c9\7X\2\2\u09c8\u0998\3\2\2"+
+		"\2\u09c8\u0999\3\2\2\2\u09c8\u099a\3\2\2\2\u09c8\u099d\3\2\2\2\u09c8\u09a0"+
+		"\3\2\2\2\u09c8\u09a1\3\2\2\2\u09c8\u09a2\3\2\2\2\u09c8\u09a3\3\2\2\2\u09c8"+
+		"\u09a4\3\2\2\2\u09c8\u09a5\3\2\2\2\u09c8\u09a6\3\2\2\2\u09c8\u09a7\3\2"+
+		"\2\2\u09c8\u09a8\3\2\2\2\u09c8\u09a9\3\2\2\2\u09c8\u09aa\3\2\2\2\u09c8"+
+		"\u09ab\3\2\2\2\u09c8\u09ac\3\2\2\2\u09c8\u09ad\3\2\2\2\u09c8\u09ae\3\2"+
+		"\2\2\u09c8\u09af\3\2\2\2\u09c8\u09b0\3\2\2\2\u09c8\u09b1\3\2\2\2\u09c8"+
+		"\u09b2\3\2\2\2\u09c8\u09b3\3\2\2\2\u09c8\u09b4\3\2\2\2\u09c8\u09b5\3\2"+
+		"\2\2\u09c8\u09b6\3\2\2\2\u09c8\u09b7\3\2\2\2\u09c8\u09b8\3\2\2\2\u09c8"+
+		"\u09b9\3\2\2\2\u09c8\u09ba\3\2\2\2\u09c8\u09bb\3\2\2\2\u09c8\u09bc\3\2"+
+		"\2\2\u09c8\u09bd\3\2\2\2\u09c8\u09be\3\2\2\2\u09c8\u09bf\3\2\2\2\u09c8"+
+		"\u09c0\3\2\2\2\u09c8\u09c1\3\2\2\2\u09c8\u09c2\3\2\2\2\u09c8\u09c3\3\2"+
+		"\2\2\u09c8\u09c4\3\2\2\2\u09c8\u09c6\3\2\2\2\u09c9\u0187\3\2\2\2\u09ca"+
+		"\u09d2\7\u0085\2\2\u09cb\u09d2\7\u008b\2\2\u09cc\u09d2\7\u008c\2\2\u09cd"+
+		"\u09d2\7\u008d\2\2\u09ce\u09d2\5\u018a\u00c6\2\u09cf\u09d2\5\u018c\u00c7"+
+		"\2\u09d0\u09d2\5\u018e\u00c8\2\u09d1\u09ca\3\2\2\2\u09d1\u09cb\3\2\2\2"+
+		"\u09d1\u09cc\3\2\2\2\u09d1\u09cd\3\2\2\2\u09d1\u09ce\3\2\2\2\u09d1\u09cf"+
+		"\3\2\2\2\u09d1\u09d0\3\2\2\2\u09d2\u0189\3\2\2\2\u09d3\u09d4\t\13\2\2"+
+		"\u09d4\u018b\3\2\2\2\u09d5\u09d6\7\60\2\2\u09d6\u018d\3\2\2\2\u09d7\u09d8"+
+		"\t\f\2\2\u09d8\u018f\3\2\2\2\u0149\u0191\u019d\u01a1\u01ac\u01b0\u01bf"+
+		"\u01c6\u01cb\u01cd\u01d2\u01d8\u01e2\u01e9\u01ef\u01f3\u01f8\u01fe\u0205"+
+		"\u020b\u020e\u0211\u0214\u021b\u0222\u0260\u026f\u0275\u027b\u0288\u028a"+
+		"\u0290\u029f\u02a5\u02c3\u02c8\u02cc\u02d0\u02d3\u02d7\u02dd\u02df\u02e7"+
+		"\u02eb\u02ee\u02f5\u02fc\u0300\u0305\u0309\u030c\u0311\u0317\u0324\u032f"+
+		"\u0331\u0340\u0342\u034e\u0350\u035d\u035f\u0371\u0373\u037f\u0381\u038c"+
+		"\u0397\u03a2\u03ad\u03b8\u03c2\u03ca\u03d7\u03e1\u03e8\u03ec\u03f0\u03f4"+
+		"\u03f8\u03fd\u0400\u0403\u0409\u0411\u0416\u0419\u041f\u042a\u0441\u0445"+
+		"\u044d\u0453\u0467\u046b\u0478\u047c\u047f\u0486\u048e\u0498\u04a3\u04af"+
+		"\u04b9\u04be\u04c5\u04c8\u04cd\u04d2\u04e7\u04eb\u04f0\u04fb\u0501\u0505"+
+		"\u050a\u050e\u0513\u0516\u052c\u0532\u053d\u0541\u0544\u054e\u0554\u0557"+
+		"\u055e\u0568\u056c\u056f\u0572\u0576\u057b\u057d\u0581\u0585\u058e\u059b"+
+		"\u05a3\u05a9\u05af\u05b3\u05b6\u05bf\u05c8\u05d0\u05db\u05e1\u05ec\u05ef"+
+		"\u05f4\u0603\u0609\u0612\u061c\u0622\u062a\u062e\u0632\u0637\u063c\u0643"+
+		"\u0645\u064a\u064e\u065c\u0662\u0671\u067b\u0680\u0687\u068d\u0692\u0698"+
+		"\u069f\u06a3\u06a5\u06a7\u06ae\u06b1\u06b4\u06b7\u06bc\u06c0\u06c3\u06c7"+
+		"\u06cb\u06d0\u06d3\u06d5\u06d9\u06e0\u06e6\u06ea\u06f0\u06f5\u06f7\u06fd"+
+		"\u0701\u0707\u070e\u0712\u0714\u0716\u071d\u0727\u072b\u072d\u072f\u0733"+
+		"\u0736\u073c\u0746\u074a\u0750\u0758\u075c\u075f\u0763\u0768\u076b\u076e"+
+		"\u0772\u0777\u0781\u0788\u078d\u0791\u0796\u079c\u07a0\u07a6\u07ac\u07b0"+
+		"\u07b5\u07bb\u07bf\u07c2\u07c6\u07c9\u07cb\u07ce\u07d8\u07dd\u07df\u07e2"+
+		"\u07e5\u07e8\u07f1\u07fb\u0800\u0803\u0807\u080a\u080d\u0811\u081a\u0829"+
+		"\u082f\u0833\u0838\u083b\u083f\u0842\u0846\u084a\u084e\u0851\u0855\u0859"+
+		"\u085c\u0861\u0865\u0868\u086d\u0870\u0874\u0878\u087b\u087f\u088a\u088e"+
+		"\u0895\u0899\u089e\u08a3\u08aa\u08ae\u08b8\u08c8\u08cd\u08d1\u08d4\u08d8"+
+		"\u08de\u08e1\u08e5\u08ef\u08f2\u08fa\u08ff\u0904\u090c\u0913\u0917\u091e"+
+		"\u0924\u0928\u092e\u0937\u093b\u093e\u094e\u0955\u095e\u0964\u0968\u096b"+
+		"\u096f\u0973\u0978\u097f\u0985\u0989\u0992\u09c8\u09d1";
 	public static final String _serializedATN = Utils.join(
 		new String[] {
 			_serializedATNSegment0,

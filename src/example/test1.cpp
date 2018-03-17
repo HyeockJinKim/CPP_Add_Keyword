@@ -15,25 +15,14 @@ public: C() {}
     virtual void g1() {}
 };
 
-class B1 : weak public A, public weak C {
+class B1 : public A, public weak C {
 private:
     int y;
 public : B1() {}
-    virtual void g1() {}
+    void g1() {}
     virtual void f() { cout << "E" << endl; }
     virtual void f2() { }
 };
-/*
-class _B1 : public A {
-}
-
-class B1 : public _B1, public C {
-private:
-    int y;
-public : B1() {}
-    virtual void f() { }
-    virtual void f2() { }
-};*/
 
 class B2 : public weak B1 {
 public : B2() {}
@@ -52,5 +41,5 @@ public :
 
 int a() {
     A * t1 = new B1;
-    nweak B1 * t2 = wstatic_cast<B1*>(t1);
+    C * t2 = wstatic_cast<B1*>(t1);
 }

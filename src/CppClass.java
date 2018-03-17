@@ -4,7 +4,7 @@ import java.util.Map;
 public class CppClass {
     String className;
     public Map<CppClass, Boolean> superClassMap;// Map Weak, Nweak
-    public Map<String, CppClass> virtualFunctionMap; // Map
+    public Map<CppFunction, CppClass> virtualFunctionMap; // Map
 
     CppClass(String className) {
         this.className = className;

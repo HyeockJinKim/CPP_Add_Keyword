@@ -1,44 +1,23 @@
 import g4.CPP14BaseVisitor;
 import g4.CPP14Parser;
-import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ClassVisitor<T> extends CPP14BaseVisitor<T> {
     private Map<String, CppClass> classMap = new HashMap<>();
-    private List<ParseTree> tempSuperClassList = new ArrayList<>();
     private CppClass currentClass;
+    private boolean isParam = false;
+    static CppFunction cppFunction;
 
-//    @Override
-//    public T visitTranslationunit(CPP14Parser.TranslationunitContext ctx) {
-//        T returnValue =  visitChildren(ctx);
-//        System.out.println(ctx.getText());
-//        return returnValue;
-//    }
-
-    @Override public T visitTypespecifierseq(CPP14Parser.TypespecifierseqContext ctx) {
-        T returnValue = visitChildren(ctx);
-
-        ctx.children.addAll(0, tempSuperClassList);
-        tempSuperClassList = new ArrayList<>();
-
-        return returnValue;
-    }
-
+    /**
+     * Class's start.
+     * class like currentClass is created.
+     * @param ctx
+     * @return
+     */
     @Override
-    public T visitDeclaration(CPP14Parser.DeclarationContext ctx) {
-//        System.out.println(ctx.getChild(0).getChild(0).getClass().getName() + "!!!");
-//        new CPP14Parser.SimpledeclarationContext()
-        T returnValue = visitChildren(ctx);
-
-        return returnValue;
-    }
-
-    @Override public T visitClassspecifier(CPP14Parser.ClassspecifierContext ctx) {
+    public T visitClassspecifier(CPP14Parser.ClassspecifierContext ctx) {
         String className = ctx.classhead().classheadname().getText();
 
         currentClass = new CppClass(className);
@@ -51,53 +30,88 @@ public class ClassVisitor<T> extends CPP14BaseVisitor<T> {
         return returnValue;
     }
 
-    @Override public T visitBasespecifier(CPP14Parser.BasespecifierContext ctx) {
+    /**
+     * Add class in inheritance to superclassMap.
+     * @param ctx
+     * @return
+     */
+    @Override
+    public T visitBasespecifier(CPP14Parser.BasespecifierContext ctx) {
         String superClassName = ctx.basetypespecifier().classordecltype().classname().getText();
         if (currentClass != null) {
-            if (ctx.Weak() != null) {
-                currentClass.superClassMap.put(classMap.get(superClassName), true);
-            } else {
-                currentClass.superClassMap.put(classMap.get(superClassName), false);
-            }
+            currentClass.superClassMap.put(classMap.get(superClassName), ctx.Weak() != null);
 
             for (CppClass supClass : currentClass.superClassMap.keySet()) {
-                for (String virtualFunction : supClass.virtualFunctionMap.keySet()) {
-                    currentClass.virtualFunctionMap.put(virtualFunction, supClass);
+                for (CppFunction cppFunction : supClass.virtualFunctionMap.keySet()) {
+                    currentClass.virtualFunctionMap.put(cppFunction, supClass);
                 }
             }
         }
         return visitChildren(ctx);
     }
 
-    @Override public T visitFunctiondefinition(CPP14Parser.FunctiondefinitionContext ctx) {
-        if (currentClass != null) {
-            if (ctx.declspecifierseq() != null) { // virtual
-                String virtualFunction = ctx.declarator().ptrdeclarator().noptrdeclarator().noptrdeclarator().getText();
-                if (currentClass.virtualFunctionMap.keySet().contains(virtualFunction)) {
-                    if (!currentClass.superClassMap.get(currentClass.virtualFunctionMap.get(virtualFunction))) {  // super class weak problem
-                        System.out.println(currentClass.className + " extends Nweak "
-                                + currentClass.virtualFunctionMap.get(virtualFunction).className + " class : "+ virtualFunction);
-                    } else {
-                        currentClass.virtualFunctionMap.put(virtualFunction, currentClass);
-                    }
-                } else {
-                    if (ctx.declspecifierseq().getText().contains("virtual")) {
-                        currentClass.virtualFunctionMap.put(virtualFunction, currentClass);
-                    }
-                }
+    /**
+     * Put function parameter input into cppFunction.function parameter.
+     *  to compare overload function.
+     * @param ctx
+     * @return
+     */
+    @Override
+    public T visitTypespecifier(CPP14Parser.TypespecifierContext ctx) {
+        if (isParam) {
+            cppFunction.functionParameter.add(ctx.getText());
+        }
+        return super.visitTypespecifier(ctx);
+    }
 
-//                if (ctx.declspecifierseq().getText().contains("virtual")) {
-//                    if (currentClass.virtualFunctionMap.keySet().contains(virtualFunction)) {
-//                        if (!isWeak) {
-//                            System.out.println(currentClass.className + " is not weak class : " + virtualFunction);
-//                        }
-//                    } else {
-//                        currentClass.virtualFunctionMap.put(virtualFunction);
-//                    }
-//                }
+    /**
+     * Function parameter input check.
+     * @param ctx
+     * @return
+     */
+    @Override
+    public T visitParametersandqualifiers(CPP14Parser.ParametersandqualifiersContext ctx) {
+        isParam = true;
+        T returnValue = visitChildren(ctx);
+        isParam = false;
+        return returnValue;
+    }
+
+    /**
+     * Put virtual function into virtual function map
+     * key : virtual function name
+     * value : super class (CppClass)
+     * @param ctx
+     * @return
+     */
+    @Override
+    public T visitFunctiondefinition(CPP14Parser.FunctiondefinitionContext ctx) {
+        cppFunction = new CppFunction();
+        T returnValue = visitChildren(ctx);
+
+        if (currentClass != null) {
+            if (ctx.declspecifierseq() != null) {
+
+                cppFunction.functionName = ctx.declarator().ptrdeclarator().noptrdeclarator().noptrdeclarator().getText();
+
+                currentClass.virtualFunctionMap.keySet().stream()
+                        .filter(x-> x.functionName.equals(cppFunction.functionName)
+                                && x.functionParameter.equals(cppFunction.functionParameter))
+                        .findAny()
+                        .ifPresentOrElse(function-> {
+                            if (!currentClass.superClassMap.get(currentClass.virtualFunctionMap.get(function))) {
+                                System.out.println(currentClass.className + " extends Nweak "
+                                        + currentClass.virtualFunctionMap.get(function).className + " class : "+ function.functionName);
+                            } else {
+                                currentClass.virtualFunctionMap.put(function, currentClass);
+                            } }, ()-> {
+                            if (ctx.declspecifierseq().getText().contains("virtual")) {
+                                currentClass.virtualFunctionMap.put(cppFunction, currentClass);
+                            }
+                        });
             }
         }
-        return visitChildren(ctx);
+        return returnValue;
     }
 
 }
